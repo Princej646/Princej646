@@ -46,6 +46,8 @@ export default function HomeScreen() {
   }, [user]);
 
   const loadStats = async () => {
+    if (Platform.OS === 'web' || !useDBStore) return;
+    
     try {
       const db = useDBStore.getState().getDatabase();
       if (!db) return;
