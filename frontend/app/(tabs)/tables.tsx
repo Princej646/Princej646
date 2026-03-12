@@ -30,7 +30,6 @@ interface Table {
 
 export default function TablesScreen() {
   const router = useRouter();
-  const db = useDBStore((state) => state.getDatabase());
   const [tables, setTables] = useState<Table[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -38,10 +37,15 @@ export default function TablesScreen() {
   const [newTableSeats, setNewTableSeats] = useState('4');
 
   useEffect(() => {
-    loadTables();
-  }, [db]);
+    if (Platform.OS !== 'web' && useDBStore) {
+      loadTables();
+    }
+  }, []);
 
   const loadTables = async () => {
+    if (Platform.OS === 'web' || !useDBStore) return;
+    
+    const db = useDBStore.getState().getDatabase();
     if (!db) return;
     try {
       const result = await db.getAllAsync<Table>(
