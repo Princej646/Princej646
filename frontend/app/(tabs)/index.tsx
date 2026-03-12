@@ -6,16 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
-import { useDBStore } from '../../store/dbStore';
 import { useRouter } from 'expo-router';
+
+let useDBStore: any = null;
+if (Platform.OS !== 'web') {
+  useDBStore = require('../../store/dbStore').useDBStore;
+}
 
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
-  const { initDatabase, isInitialized } = useDBStore();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
@@ -31,12 +35,15 @@ export default function HomeScreen() {
       return;
     }
     
-    if (!isInitialized) {
-      initDatabase().catch(console.error);
-    } else {
-      loadStats();
+    if (Platform.OS !== 'web' && useDBStore) {
+      const { initDatabase, isInitialized } = useDBStore.getState();
+      if (!isInitialized) {
+        initDatabase().catch(console.error);
+      } else {
+        loadStats();
+      }
     }
-  }, [isInitialized, user]);
+  }, [user]);
 
   const loadStats = async () => {
     try {
