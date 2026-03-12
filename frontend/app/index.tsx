@@ -1,14 +1,17 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import * as SecureStore from 'expo-secure-store';
 
 export default function Index() {
   const router = useRouter();
-  const setUser = useAuthStore((state) => state.login);
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      router.replace('/web-notice');
+      return;
+    }
     checkAuth();
   }, []);
 
