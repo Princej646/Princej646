@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,10 +6,10 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 import uuid
 from datetime import datetime
-
+from passlib.hash import bcrypt
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -27,30 +27,94 @@ api_router = APIRouter(prefix="/api")
 
 
 # Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+class LoginRequest(BaseModel):
+    username: str
+    credential: str
+    mode: str  # 'pin' or 'password'
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class User(BaseModel):
+    id: str
+    username: str
+    name: str
+    role: str  # admin, manager, captain, cashier
 
-# Add your routes to the router instead of directly to app
+class LoginResponse(BaseModel):
+    user: User
+    message: str
+
+# Auth Routes
+@api_router.post("/auth/login", response_model=LoginResponse)
+async def login(request: LoginRequest):
+    # Check if users collection exists and has data
+    users_count = await db.users.count_documents({})
+    
+    if users_count == 0:
+        # Initialize with demo users
+        demo_users = [
+            {
+                "id": str(uuid.uuid4()),
+                "username": "admin",
+                "password_hash": bcrypt.hash("admin123"),
+                "pin_hash": bcrypt.hash("1234"),
+                "name": "Admin User",
+                "role": "admin",
+                "created_at": datetime.utcnow().isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "username": "manager",
+                "password_hash": bcrypt.hash("manager123"),
+                "pin_hash": bcrypt.hash("5678"),
+                "name": "Manager User",
+                "role": "manager",
+                "created_at": datetime.utcnow().isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "username": "captain",
+                "password_hash": bcrypt.hash("captain123"),
+                "pin_hash": bcrypt.hash("9012"),
+                "name": "Captain User",
+                "role": "captain",
+                "created_at": datetime.utcnow().isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "username": "cashier",
+                "password_hash": bcrypt.hash("cashier123"),
+                "pin_hash": bcrypt.hash("3456"),
+                "name": "Cashier User",
+                "role": "cashier",
+                "created_at": datetime.utcnow().isoformat()
+            }
+        ]
+        await db.users.insert_many(demo_users)
+    
+    # Find user
+    user = await db.users.find_one({"username": request.username})
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Verify credential
+    if request.mode == "pin":
+        if not bcrypt.verify(request.credential, user["pin_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid PIN")
+    else:
+        if not bcrypt.verify(request.credential, user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Invalid password")
+    
+    user_response = User(
+        id=user["id"],
+        username=user["username"],
+        name=user["name"],
+        role=user["role"]
+    )
+    
+    return LoginResponse(user=user_response, message="Login successful")
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
-
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+    return {"message": "Restaurant POS API", "status": "online"}
 
 # Include the router in the main app
 app.include_router(api_router)
