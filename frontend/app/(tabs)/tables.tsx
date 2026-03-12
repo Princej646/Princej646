@@ -64,6 +64,12 @@ export default function TablesScreen() {
   };
 
   const handleAddTable = async () => {
+    if (Platform.OS === 'web' || !useDBStore) {
+      Alert.alert('Error', 'Database not available on web');
+      return;
+    }
+
+    const db = useDBStore.getState().getDatabase();
     if (!db || !newTableNumber.trim()) {
       Alert.alert('Error', 'Please enter table number');
       return;
