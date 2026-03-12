@@ -14,9 +14,17 @@ import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
 
 let useDBStore: any = null;
-if (Platform.OS !== 'web') {
-  useDBStore = require('../../store/dbStore').useDBStore;
-}
+
+const initDBStore = async () => {
+  if (Platform.OS !== 'web' && !useDBStore) {
+    try {
+      const dbStoreModule = await import('../../store/dbStore');
+      useDBStore = dbStoreModule.useDBStore;
+    } catch (error) {
+      console.error('Failed to load dbStore:', error);
+    }
+  }
+};
 
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
