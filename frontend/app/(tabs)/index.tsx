@@ -43,13 +43,17 @@ export default function HomeScreen() {
       return;
     }
     
-    if (Platform.OS !== 'web' && useDBStore) {
-      const { initDatabase, isInitialized } = useDBStore.getState();
-      if (!isInitialized) {
-        initDatabase().catch(console.error);
-      } else {
-        loadStats();
-      }
+    if (Platform.OS !== 'web') {
+      initDBStore().then(() => {
+        if (useDBStore) {
+          const { initDatabase, isInitialized } = useDBStore.getState();
+          if (!isInitialized) {
+            initDatabase().catch(console.error);
+          } else {
+            loadStats();
+          }
+        }
+      });
     }
   }, [user]);
 
