@@ -16,9 +16,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 let useDBStore: any = null;
-if (Platform.OS !== 'web') {
-  useDBStore = require('../../store/dbStore').useDBStore;
-}
+
+const initDBStore = async () => {
+  if (Platform.OS !== 'web' && !useDBStore) {
+    try {
+      const dbStoreModule = await import('../../store/dbStore');
+      useDBStore = dbStoreModule.useDBStore;
+    } catch (error) {
+      console.error('Failed to load dbStore:', error);
+    }
+  }
+};
 
 interface Table {
   id: string;
