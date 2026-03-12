@@ -9,11 +9,16 @@ import {
   TextInput,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useDBStore } from '../../store/dbStore';
 import { useRouter } from 'expo-router';
+
+let useDBStore: any = null;
+if (Platform.OS !== 'web') {
+  useDBStore = require('../../store/dbStore').useDBStore;
+}
 
 interface Table {
   id: string;
