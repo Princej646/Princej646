@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 let db: SQLite.SQLiteDatabase | null = null;
 
@@ -13,6 +14,13 @@ export const useDBStore = create<DBState>((set) => ({
   isInitialized: false,
   initDatabase: async () => {
     if (db) return;
+
+    // SQLite is only available on native platforms
+    if (Platform.OS === 'web') {
+      console.warn('SQLite is not available on web platform. This app is designed for mobile devices.');
+      set({ isInitialized: true });
+      return;
+    }
 
     try {
       db = await SQLite.openDatabaseAsync('restaurant_pos.db');
