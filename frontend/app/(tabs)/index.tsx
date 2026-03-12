@@ -1,0 +1,285 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../store/authStore';
+import { useDBStore } from '../../store/dbStore';
+import { useRouter } from 'expo-router';
+
+export default function HomeScreen() {
+  const user = useAuthStore((state) => state.user);
+  const { initDatabase, isInitialized } = useDBStore();
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    totalTables: 0,
+    occupiedTables: 0,
+    todayOrders: 0,
+    todayRevenue: 0,
+  });
+
+  useEffect(() => {
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    
+    if (!isInitialized) {
+      initDatabase().catch(console.error);
+    } else {
+      loadStats();
+    }
+  }, [isInitialized, user]);
+
+  const loadStats = async () => {
+    try {
+      const db = useDBStore.getState().getDatabase();
+      if (!db) return;
+
+      const tables = await db.getAllAsync('SELECT * FROM tables');
+      const occupied = tables.filter((t: any) => t.status === 'occupied').length;
+
+      const today = new Date().toISOString().split('T')[0];
+      const orders = await db.getAllAsync(
+        `SELECT * FROM orders WHERE DATE(created_at) = ?`,
+        [today]
+      );
+
+      const bills = await db.getAllAsync(
+        `SELECT SUM(total) as revenue FROM bills WHERE DATE(billed_at) = ?`,
+        [today]
+      );
+
+      setStats({
+        totalTables: tables.length,
+        occupiedTables: occupied,
+        todayOrders: orders.length,
+        todayRevenue: bills[0]?.revenue || 0,
+      });
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadStats();
+    setRefreshing(false);
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const quickActions = [
+    {
+      icon: 'add-circle',
+      label: 'New Order',
+      color: '#FF6B35',
+      route: '/tables',
+      roles: ['captain', 'admin'],
+    },
+    {
+      icon: 'receipt',
+      label: 'Generate Bill',
+      color: '#4ECDC4',
+      route: '/billing',
+      roles: ['cashier', 'admin'],
+    },
+    {
+      icon: 'restaurant',
+      label: 'Manage Menu',
+      color: '#95E1D3',
+      route: '/menu',
+      roles: ['admin', 'manager'],
+    },
+    {
+      icon: 'bar-chart',
+      label: 'View Reports',
+      color: '#F38181',
+      route: '/reports',
+      roles: ['manager', 'admin'],
+    },
+  ];
+
+  const filteredActions = quickActions.filter((action) =>
+    action.roles.includes(user?.role || '')
+  );
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.username}>{user?.name}</Text>
+            <Text style={styles.role}>{user?.role?.toUpperCase()}</Text>
+          </View>
+          <View style={styles.logoContainer}>
+            <Ionicons name="restaurant" size={40} color="#FF6B35" />
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Ionicons name="grid-outline" size={32} color="#FF6B35" />
+            <Text style={styles.statValue}>{stats.totalTables}</Text>
+            <Text style={styles.statLabel}>Total Tables</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="people-outline" size={32} color="#4ECDC4" />
+            <Text style={styles.statValue}>{stats.occupiedTables}</Text>
+            <Text style={styles.statLabel}>Occupied</Text>
+          </View>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Ionicons name="cart-outline" size={32} color="#95E1D3" />
+            <Text style={styles.statValue}>{stats.todayOrders}</Text>
+            <Text style={styles.statLabel}>Today Orders</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="cash-outline" size={32} color="#F38181" />
+            <Text style={styles.statValue}>₹{stats.todayRevenue.toFixed(2)}</Text>
+            <Text style={styles.statLabel}>Today Revenue</Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            {filteredActions.map((action, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.actionCard, { borderLeftColor: action.color }]}
+                onPress={() => router.push(action.route as any)}
+              >
+                <Ionicons name={action.icon as any} size={32} color={action.color} />
+                <Text style={styles.actionLabel}>{action.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  greeting: {
+    fontSize: 16,
+    color: '#666',
+  },
+  username: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginTop: 4,
+  },
+  role: {
+    fontSize: 12,
+    color: '#FF6B35',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  logoContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFF5F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    padding: 16,
+    gap: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginTop: 12,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  section: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: 16,
+  },
+  actionsGrid: {
+    gap: 16,
+  },
+  actionCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  actionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+});
