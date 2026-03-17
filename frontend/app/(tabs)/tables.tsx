@@ -108,7 +108,7 @@ export default function TablesScreen() {
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Take Order',
-            onPress: () => router.push(`/order/${table.id}` as any),
+            onPress: () => router.push(`/order/${table.id}`),
           },
         ]
       );
@@ -120,7 +120,7 @@ export default function TablesScreen() {
           { text: 'OK', style: 'cancel' },
           {
             text: 'View Order',
-            onPress: () => router.push(`/order/${table.id}` as any),
+            onPress: () => router.push(`/order/${table.id}`),
           },
         ]
       );
