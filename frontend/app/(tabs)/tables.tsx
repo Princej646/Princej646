@@ -16,17 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 let useDBStore: any = null;
-
-const initDBStore = async () => {
-  if (Platform.OS !== 'web' && !useDBStore) {
-    try {
-      const dbStoreModule = await import('../../store/dbStore');
-      useDBStore = dbStoreModule.useDBStore;
-    } catch (error) {
-      console.error('Failed to load dbStore:', error);
-    }
-  }
-};
+if (Platform.OS !== 'web') {
+  useDBStore = require('../../store/dbStore').useDBStore;
+}
 
 interface Table {
   id: string;
@@ -45,7 +37,7 @@ export default function TablesScreen() {
   const [newTableSeats, setNewTableSeats] = useState('4');
 
   useEffect(() => {
-    if (Platform.OS !== 'web' && useDBStore) {
+    if (Platform.OS !== 'web') {
       loadTables();
     }
   }, []);
