@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 
 let useDBStore: any = null;
@@ -50,6 +51,15 @@ export default function TablesScreen() {
       loadTables();
     }
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web') {
+        loadTables();
+      }
+    }, [])
+  );
 
   const loadTables = async () => {
     if (Platform.OS === 'web' || !useDBStore) return;

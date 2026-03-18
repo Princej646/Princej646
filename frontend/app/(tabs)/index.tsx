@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 let useDBStore: any = null;
 
@@ -56,6 +57,15 @@ export default function HomeScreen() {
       });
     }
   }, [user]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web' && useDBStore) {
+        loadStats();
+      }
+    }, [])
+  );
 
   const loadStats = async () => {
     if (Platform.OS === 'web' || !useDBStore) return;

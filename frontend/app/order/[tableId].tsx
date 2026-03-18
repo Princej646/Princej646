@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
+import { useFocusEffect } from '@react-navigation/native';
 
 let useDBStore: any = null;
 let bluetoothPrinter: any = null;
@@ -84,6 +85,15 @@ export default function OrderScreen() {
       loadMenuItems(selectedCategory);
     }
   }, [selectedCategory]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web') {
+        loadTableAndOrder();
+      }
+    }, [tableId])
+  );
 
   const loadTableAndOrder = async () => {
     if (!useDBStore) return;

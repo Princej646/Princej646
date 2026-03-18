@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 let useDBStore: any = null;
 if (Platform.OS !== 'web') {
@@ -60,6 +61,15 @@ export default function BillingScreen() {
       loadReadyOrders();
     }
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web') {
+        loadReadyOrders();
+      }
+    }, [])
+  );
 
   const loadReadyOrders = async () => {
     if (!useDBStore) return;
