@@ -425,17 +425,19 @@ export default function OrderScreen() {
 
       {/* Add Item Modal */}
       <Modal visible={showItemModal} transparent animationType="slide">
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalOverlay}
-        >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <KeyboardAvoidingView 
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+              style={styles.keyboardAvoidingContainer}
+            >
+              <TouchableWithoutFeedback>
                 <View style={styles.modalContent}>
                   <ScrollView 
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={styles.modalScrollContent}
                   >
                     <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
                     <Text style={styles.modalSubtitle}>₹{selectedItem?.base_price.toFixed(2)}</Text>
@@ -489,6 +491,7 @@ export default function OrderScreen() {
                     <TextInput
                       style={styles.notesInput}
                       placeholder="Special instructions (optional)"
+                      placeholderTextColor="#999"
                       value={itemNotes}
                       onChangeText={setItemNotes}
                       multiline
@@ -496,33 +499,34 @@ export default function OrderScreen() {
                       blurOnSubmit={true}
                       onSubmitEditing={Keyboard.dismiss}
                     />
-
-                    <View style={styles.modalButtons}>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.cancelButton]}
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          setShowItemModal(false);
-                        }}
-                      >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.confirmButton]}
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          handleConfirmAddItem();
-                        }}
-                      >
-                        <Text style={styles.confirmButtonText}>Add to Order</Text>
-                      </TouchableOpacity>
-                    </View>
                   </ScrollView>
+                  
+                  {/* Buttons outside ScrollView to ensure visibility */}
+                  <View style={styles.modalButtons}>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.cancelButton]}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowItemModal(false);
+                      }}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.confirmButton]}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        handleConfirmAddItem();
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Add to Order</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
@@ -715,12 +719,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  keyboardAvoidingContainer: {
+    width: '85%',
+    maxHeight: '80%',
+  },
   modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 16,
     padding: 24,
-    width: '85%',
-    maxHeight: '80%',
+    maxHeight: '100%',
+  },
+  modalScrollContent: {
+    flexGrow: 1,
   },
   modalTitle: {
     fontSize: 24,
@@ -793,13 +803,17 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 14,
     color: '#1A1A1A',
-    marginBottom: 20,
-    height: 80,
+    minHeight: 80,
+    maxHeight: 120,
     textAlignVertical: 'top',
   },
   modalButtons: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
   },
   modalButton: {
     flex: 1,
