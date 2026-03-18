@@ -187,112 +187,240 @@ export default function ReportsScreen() {
         <Text style={styles.headerTitle}>Reports</Text>
       </View>
 
-      <View style={styles.periodSelector}>
-        {['today', 'week', 'month'].map((period) => (
-          <TouchableOpacity
-            key={period}
+      <View style={styles.viewSelector}>
+        <TouchableOpacity
+          style={[
+            styles.viewButton,
+            selectedView === 'analytics' && styles.viewButtonActive,
+          ]}
+          onPress={() => setSelectedView('analytics')}
+        >
+          <Ionicons name="stats-chart" size={20} color={selectedView === 'analytics' ? '#FFF' : '#666'} />
+          <Text
             style={[
-              styles.periodButton,
-              selectedPeriod === period && styles.periodButtonActive,
+              styles.viewButtonText,
+              selectedView === 'analytics' && styles.viewButtonTextActive,
             ]}
-            onPress={() => setSelectedPeriod(period as any)}
           >
-            <Text
-              style={[
-                styles.periodButtonText,
-                selectedPeriod === period && styles.periodButtonTextActive,
-              ]}
-            >
-              {period.charAt(0).toUpperCase() + period.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+            Analytics
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.viewButton,
+            selectedView === 'bills' && styles.viewButtonActive,
+          ]}
+          onPress={() => {
+            setSelectedView('bills');
+            if (Platform.OS !== 'web') {
+              const db = useDBStore.getState().getDatabase();
+              if (db) loadBills(db);
+            }
+          }}
+        >
+          <Ionicons name="receipt" size={20} color={selectedView === 'bills' ? '#FFF' : '#666'} />
+          <Text
+            style={[
+              styles.viewButtonText,
+              selectedView === 'bills' && styles.viewButtonTextActive,
+            ]}
+          >
+            Bills
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {/* Summary Cards */}
-        <View style={styles.summaryCards}>
-          <View style={styles.summaryCard}>
-            <Ionicons name="cart" size={32} color="#FF6B35" />
-            <Text style={styles.summaryValue}>
-              {dailySummary?.totalOrders || 0}
-            </Text>
-            <Text style={styles.summaryLabel}>Orders</Text>
+      {selectedView === 'analytics' ? (
+        <>
+          <View style={styles.periodSelector}>
+            {['today', 'week', 'month'].map((period) => (
+              <TouchableOpacity
+                key={period}
+                style={[
+                  styles.periodButton,
+                  selectedPeriod === period && styles.periodButtonActive,
+                ]}
+                onPress={() => setSelectedPeriod(period as any)}
+              >
+                <Text
+                  style={[
+                    styles.periodButtonText,
+                    selectedPeriod === period && styles.periodButtonTextActive,
+                  ]}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
-          <View style={styles.summaryCard}>
-            <Ionicons name="cash" size={32} color="#4ECDC4" />
-            <Text style={styles.summaryValue}>
-              ₹{(dailySummary?.totalRevenue || 0).toFixed(0)}
-            </Text>
-            <Text style={styles.summaryLabel}>Revenue</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Ionicons name="trending-up" size={32} color="#95E1D3" />
-            <Text style={styles.summaryValue}>
-              ₹{(dailySummary?.avgOrderValue || 0).toFixed(0)}
-            </Text>
-            <Text style={styles.summaryLabel}>Avg Order</Text>
-          </View>
-        </View>
 
-        {/* Weekly Chart */}
-        {weeklyData.length > 0 && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Last 7 Days Revenue</Text>
-            <BarChart
-              data={weeklyData}
-              barWidth={35}
-              noOfSections={4}
-              barBorderRadius={4}
-              yAxisThickness={0}
-              xAxisThickness={0}
-              yAxisTextStyle={{ color: '#666' }}
-              xAxisLabelTextStyle={{ color: '#666', fontSize: 12 }}
-              height={200}
-              spacing={20}
-            />
-          </View>
-        )}
-
-        {/* Top Items */}
-        <View style={styles.topItemsCard}>
-          <Text style={styles.sectionTitle}>Top Selling Items</Text>
-          {topItems.length > 0 ? (
-            topItems.map((item, index) => (
-              <View key={index} style={styles.topItem}>
-                <View style={styles.topItemRank}>
-                  <Text style={styles.topItemRankText}>{index + 1}</Text>
-                </View>
-                <View style={styles.topItemInfo}>
-                  <Text style={styles.topItemName}>{item.item_name}</Text>
-                  <Text style={styles.topItemStats}>
-                    {item.quantity} sold • ₹{item.revenue.toFixed(2)}
-                  </Text>
-                </View>
-                <View style={styles.topItemProgress}>
-                  <View
-                    style={[
-                      styles.topItemProgressBar,
-                      {
-                        width: `${Math.min((item.quantity / (topItems[0]?.quantity || 1)) * 100, 100)}%`,
-                      },
-                    ]}
-                  />
-                </View>
+          <ScrollView
+            style={styles.scrollView}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            {/* Summary Cards */}
+            <View style={styles.summaryCards}>
+              <View style={styles.summaryCard}>
+                <Ionicons name="cart" size={32} color="#FF6B35" />
+                <Text style={styles.summaryValue}>
+                  {dailySummary?.totalOrders || 0}
+                </Text>
+                <Text style={styles.summaryLabel}>Orders</Text>
               </View>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No data available for this period</Text>
+              <View style={styles.summaryCard}>
+                <Ionicons name="cash" size={32} color="#4ECDC4" />
+                <Text style={styles.summaryValue}>
+                  ₹{(dailySummary?.totalRevenue || 0).toFixed(0)}
+                </Text>
+                <Text style={styles.summaryLabel}>Revenue</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Ionicons name="trending-up" size={32} color="#95E1D3" />
+                <Text style={styles.summaryValue}>
+                  ₹{(dailySummary?.avgOrderValue || 0).toFixed(0)}
+                </Text>
+                <Text style={styles.summaryLabel}>Avg Order</Text>
+              </View>
             </View>
-          )}
-        </View>
-      </ScrollView>
+
+            {/* Weekly Chart */}
+            {weeklyData.length > 0 && (
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Last 7 Days Revenue</Text>
+                <BarChart
+                  data={weeklyData}
+                  barWidth={35}
+                  noOfSections={4}
+                  barBorderRadius={4}
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  yAxisTextStyle={{ color: '#666' }}
+                  xAxisLabelTextStyle={{ color: '#666', fontSize: 12 }}
+                  height={200}
+                  spacing={20}
+                />
+              </View>
+            )}
+
+            {/* Top Items */}
+            <View style={styles.topItemsCard}>
+              <Text style={styles.sectionTitle}>Top Selling Items</Text>
+              {topItems.length > 0 ? (
+                topItems.map((item, index) => (
+                  <View key={index} style={styles.topItem}>
+                    <View style={styles.topItemRank}>
+                      <Text style={styles.topItemRankText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.topItemInfo}>
+                      <Text style={styles.topItemName}>{item.item_name}</Text>
+                      <Text style={styles.topItemStats}>
+                        {item.quantity} sold • ₹{item.revenue.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.topItemProgress}>
+                      <View
+                        style={[
+                          styles.topItemProgressBar,
+                          {
+                            width: `${Math.min((item.quantity / (topItems[0]?.quantity || 1)) * 100, 100)}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No data available for this period</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </>
+      ) : (
+        <>
+          <View style={styles.periodSelector}>
+            {['today', 'week', 'month'].map((period) => (
+              <TouchableOpacity
+                key={period}
+                style={[
+                  styles.periodButton,
+                  selectedPeriod === period && styles.periodButtonActive,
+                ]}
+                onPress={() => setSelectedPeriod(period as any)}
+              >
+                <Text
+                  style={[
+                    styles.periodButtonText,
+                    selectedPeriod === period && styles.periodButtonTextActive,
+                  ]}
+                >
+                  {period.charAt(0).toUpperCase() + period.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <ScrollView
+            style={styles.scrollView}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+          >
+            <View style={styles.billsList}>
+              {bills.length > 0 ? (
+                bills.map((bill) => (
+                  <View key={bill.id} style={styles.billCard}>
+                    <View style={styles.billHeader}>
+                      <View>
+                        <Text style={styles.billTable}>Table {bill.table_number}</Text>
+                        <Text style={styles.billDate}>
+                          {new Date(bill.billed_at).toLocaleString()}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteBill(bill.id)}
+                      >
+                        <Ionicons name="trash" size={20} color="#FF3B30" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.billDetails}>
+                      <View style={styles.billRow}>
+                        <Text style={styles.billLabel}>Base Amount:</Text>
+                        <Text style={styles.billValue}>₹{bill.subtotal.toFixed(2)}</Text>
+                      </View>
+                      <View style={styles.billRow}>
+                        <Text style={styles.billLabel}>CGST (2.5%):</Text>
+                        <Text style={styles.billValue}>₹{bill.cgst.toFixed(2)}</Text>
+                      </View>
+                      <View style={styles.billRow}>
+                        <Text style={styles.billLabel}>SGST (2.5%):</Text>
+                        <Text style={styles.billValue}>₹{bill.sgst.toFixed(2)}</Text>
+                      </View>
+                      <View style={[styles.billRow, styles.billTotalRow]}>
+                        <Text style={styles.billTotalLabel}>Total:</Text>
+                        <Text style={styles.billTotalValue}>₹{bill.total.toFixed(2)}</Text>
+                      </View>
+                      <View style={styles.billFooter}>
+                        <Text style={styles.billPayment}>{bill.payment_method}</Text>
+                        <Text style={styles.billBy}>by {bill.billed_by_username}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="receipt-outline" size={64} color="#E0E0E0" />
+                  <Text style={styles.emptyStateText}>No bills for this period</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+        </>
+      )}
     </SafeAreaView>
   );
 }
