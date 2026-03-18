@@ -31,6 +31,7 @@ interface Table {
 
 export default function TablesScreen() {
   const router = useRouter();
+  const user = useAuthStore((state) => state.user);
   const [tables, setTables] = useState<Table[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
