@@ -48,6 +48,12 @@ export default function SettingsScreen() {
       value: user?.role?.toUpperCase(),
       onPress: () => {},
     },
+    ...(user?.role === 'admin' ? [{
+      icon: 'people',
+      label: 'User Management',
+      value: 'Manage Users',
+      onPress: () => router.push('/users' as any),
+    }] : []),
     {
       icon: 'print',
       label: 'Bluetooth Printer',
