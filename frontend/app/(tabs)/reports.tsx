@@ -81,9 +81,7 @@ export default function ReportsScreen() {
       await loadDailySummary(db);
       await loadTopItems(db);
       await loadWeeklyData(db);
-      if (selectedView === 'bills') {
-        await loadBills(db);
-      }
+      await loadBills(db); // Always load bills to ensure data is fresh
     } catch (error) {
       console.error('Error loading reports:', error);
     }
