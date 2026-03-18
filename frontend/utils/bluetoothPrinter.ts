@@ -45,9 +45,11 @@ class BluetoothPrinterService {
     }
 
     try {
+      // Try to load the BLE module - it may not be installed
       const bleModule = require('react-native-ble-plx');
-      this.BleManager = bleModule.BleManager;
-      this.State = bleModule.State;
+      if (bleModule && bleModule.BleManager) {
+        this.BleManager = bleModule.BleManager;
+        this.State = bleModule.State;
       this.bleAvailable = true;
       return true;
     } catch (error) {
