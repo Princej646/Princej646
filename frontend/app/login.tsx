@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../store/authStore';
+import { COLORS, RESTAURANT } from '../constants/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -50,9 +51,11 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Ionicons name="restaurant" size={64} color="#FF6B35" />
-          <Text style={styles.title}>Restaurant POS</Text>
-          <Text style={styles.subtitle}>Secure Offline System</Text>
+          <View style={styles.logoContainer}>
+            <Ionicons name="leaf" size={48} color={COLORS.secondary} />
+          </View>
+          <Text style={styles.title}>{RESTAURANT.name}</Text>
+          <Text style={styles.subtitle}>{RESTAURANT.tagline}</Text>
         </View>
 
         <View style={styles.loginCard}>
@@ -148,7 +151,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -159,22 +162,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.backgroundLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: COLORS.primary,
+    marginBottom: 16,
+  },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginTop: 16,
+    color: COLORS.primary,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: COLORS.textOnDark,
     marginTop: 8,
+    opacity: 0.7,
   },
   loginCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: COLORS.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -183,7 +197,7 @@ const styles = StyleSheet.create({
   modeSelector: {
     flexDirection: 'row',
     marginBottom: 24,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.surfaceAlt,
     borderRadius: 8,
     padding: 4,
   },
@@ -194,20 +208,20 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   modeButtonActive: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: COLORS.primary,
   },
   modeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: COLORS.textSecondary,
   },
   modeButtonTextActive: {
-    color: '#FFF',
+    color: COLORS.textOnPrimary,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.surfaceAlt,
     borderRadius: 8,
     paddingHorizontal: 16,
     marginBottom: 16,
@@ -219,11 +233,11 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#1A1A1A',
+    color: COLORS.textPrimary,
   },
   loginButton: {
     flexDirection: 'row',
-    backgroundColor: '#FF6B35',
+    backgroundColor: COLORS.secondary,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
@@ -233,12 +247,12 @@ const styles = StyleSheet.create({
   loginButtonText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: COLORS.textOnSecondary,
     marginRight: 8,
   },
   demoHint: {
     fontSize: 12,
-    color: '#999',
+    color: COLORS.textLight,
     textAlign: 'center',
     marginTop: 16,
   },

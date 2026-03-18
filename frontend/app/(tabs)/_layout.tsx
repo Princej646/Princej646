@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
+import { COLORS } from '../../constants/theme';
 
 export default function TabsLayout() {
   const user = useAuthStore((state) => state.user);
@@ -10,12 +11,12 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#FF6B35',
+        tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: '#999',
         tabBarStyle: {
-          backgroundColor: '#FFF',
+          backgroundColor: COLORS.background,
           borderTopWidth: 1,
-          borderTopColor: '#E0E0E0',
+          borderTopColor: COLORS.backgroundLight,
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,

@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { usePathname } from 'expo-router';
+import { COLORS, RESTAURANT } from '../../constants/theme';
 
 let useDBStore: any = null;
 if (Platform.OS !== 'web') {
@@ -483,6 +484,15 @@ export default function BillingScreen() {
       ) : (
         <ScrollView style={styles.scrollView}>
           <View style={styles.billContainer}>
+            {/* Restaurant Header on Bill */}
+            <View style={styles.restaurantHeader}>
+              <View style={styles.restaurantLogoSmall}>
+                <Ionicons name="leaf" size={24} color={COLORS.secondary} />
+              </View>
+              <Text style={styles.restaurantNameBill}>{RESTAURANT.name}</Text>
+              <Text style={styles.restaurantTagline}>{RESTAURANT.tagline}</Text>
+            </View>
+            
             <View style={styles.billHeader}>
               <Text style={styles.billTitle}>Table {selectedOrders[0].table_number}</Text>
               {selectedOrders.length === 1 ? (
@@ -813,6 +823,35 @@ const styles = StyleSheet.create({
   },
   billContainer: {
     padding: 16,
+  },
+  restaurantHeader: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  restaurantLogoSmall: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.backgroundLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    marginBottom: 8,
+  },
+  restaurantNameBill: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+  },
+  restaurantTagline: {
+    fontSize: 12,
+    color: COLORS.textOnDark,
+    opacity: 0.7,
+    marginTop: 4,
   },
   billHeader: {
     backgroundColor: '#FFF',

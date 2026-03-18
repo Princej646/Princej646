@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
 import { usePathname } from 'expo-router';
+import { COLORS, RESTAURANT } from '../../constants/theme';
 
 let useDBStore: any = null;
 
@@ -122,28 +123,28 @@ export default function HomeScreen() {
     {
       icon: 'add-circle',
       label: 'New Order',
-      color: '#FF6B35',
+      color: COLORS.primary,
       route: '/tables',
       roles: ['captain', 'admin'],
     },
     {
       icon: 'receipt',
       label: 'Generate Bill',
-      color: '#4ECDC4',
+      color: COLORS.secondary,
       route: '/billing',
       roles: ['cashier', 'admin', 'captain'],
     },
     {
       icon: 'restaurant',
       label: 'Manage Menu',
-      color: '#95E1D3',
+      color: COLORS.primary,
       route: '/menu',
       roles: ['admin', 'manager'],
     },
     {
       icon: 'bar-chart',
       label: 'View Reports',
-      color: '#F38181',
+      color: COLORS.secondary,
       route: '/reports',
       roles: ['admin'],
     },
@@ -158,28 +159,31 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
         }
       >
         <View style={styles.header}>
           <View>
+            <Text style={styles.restaurantName}>{RESTAURANT.name}</Text>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.username}>{user?.name}</Text>
             <Text style={styles.role}>{user?.role?.toUpperCase()}</Text>
           </View>
           <View style={styles.logoContainer}>
-            <Ionicons name="restaurant" size={40} color="#FF6B35" />
+            <View style={styles.logoCircle}>
+              <Ionicons name="leaf" size={28} color={COLORS.secondary} />
+            </View>
           </View>
         </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Ionicons name="grid-outline" size={32} color="#FF6B35" />
+            <Ionicons name="grid-outline" size={32} color={COLORS.primary} />
             <Text style={styles.statValue}>{stats.totalTables}</Text>
             <Text style={styles.statLabel}>Total Tables</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="people-outline" size={32} color="#4ECDC4" />
+            <Ionicons name="people-outline" size={32} color={COLORS.secondary} />
             <Text style={styles.statValue}>{stats.occupiedTables}</Text>
             <Text style={styles.statLabel}>Occupied</Text>
           </View>
@@ -187,13 +191,13 @@ export default function HomeScreen() {
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Ionicons name="cart-outline" size={32} color="#95E1D3" />
+            <Ionicons name="cart-outline" size={32} color={COLORS.primary} />
             <Text style={styles.statValue}>{stats.todayOrders}</Text>
             <Text style={styles.statLabel}>Today Orders</Text>
           </View>
           {user?.role !== 'captain' && (
             <View style={styles.statCard}>
-              <Ionicons name="cash-outline" size={32} color="#F38181" />
+              <Ionicons name="cash-outline" size={32} color={COLORS.secondary} />
               <Text style={styles.statValue}>₹{stats.todayRevenue.toFixed(2)}</Text>
               <Text style={styles.statLabel}>Today Revenue</Text>
             </View>
@@ -223,7 +227,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: COLORS.surfaceAlt,
   },
   scrollView: {
     flex: 1,
@@ -233,33 +237,46 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: COLORS.backgroundLight,
+  },
+  restaurantName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.primary,
+    marginBottom: 8,
   },
   greeting: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    color: COLORS.textOnDark,
+    opacity: 0.7,
   },
   username: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: COLORS.textOnDark,
     marginTop: 4,
   },
   role: {
     fontSize: 12,
-    color: '#FF6B35',
+    color: COLORS.secondary,
     fontWeight: '600',
     marginTop: 4,
   },
   logoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFF5F0',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  logoCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.backgroundLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -268,11 +285,11 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: COLORS.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -281,12 +298,12 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: COLORS.textPrimary,
     marginTop: 12,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: COLORS.textSecondary,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -296,21 +313,21 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: COLORS.textPrimary,
     marginBottom: 16,
   },
   actionsGrid: {
     gap: 16,
   },
   actionCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
     borderLeftWidth: 4,
-    shadowColor: '#000',
+    shadowColor: COLORS.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -319,6 +336,6 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: COLORS.textPrimary,
   },
 });
