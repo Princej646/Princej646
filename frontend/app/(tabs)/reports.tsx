@@ -119,6 +119,45 @@ export default function ReportsScreen() {
     setWeeklyData(data);
   };
 
+  const loadBills = async (db: any) => {
+    const daysBack = selectedPeriod === 'today' ? 0 : selectedPeriod === 'week' ? 7 : 30;
+    
+    const billsList = await db.getAllAsync(`
+      SELECT * FROM bills 
+      ${daysBack > 0 ? `WHERE DATE(billed_at) >= DATE('now', '-${daysBack} days')` : `WHERE DATE(billed_at) = DATE('now')`}
+      ORDER BY billed_at DESC
+    `);
+
+    setBills(billsList || []);
+  };
+
+  const handleDeleteBill = async (billId: string) => {
+    if (!useDBStore) return;
+    const db = useDBStore.getState().getDatabase();
+    if (!db) return;
+
+    Alert.alert(
+      'Delete Bill',
+      'Are you sure you want to delete this bill? This will affect reports.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await db.runAsync('DELETE FROM bills WHERE id = ?', [billId]);
+              await loadReports();
+              Alert.alert('Success', 'Bill deleted successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete bill');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadReports();
