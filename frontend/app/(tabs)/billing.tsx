@@ -84,12 +84,14 @@ export default function BillingScreen() {
     return orderItems.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
   };
 
-  const calculateGST = (subtotal: number) => {
-    const gstRate = 0.05; // 5%
-    const totalGST = subtotal * gstRate;
+  const calculateGST = (totalWithGST: number) => {
+    const gstRate = 0.05; // 5% GST (inclusive)
+    // For inclusive GST: Base = Total / (1 + GST Rate)
+    const baseAmount = totalWithGST / (1 + gstRate);
+    const totalGST = totalWithGST - baseAmount;
     const cgst = totalGST / 2; // 2.5%
     const sgst = totalGST / 2; // 2.5%
-    return { cgst, sgst, total: totalGST };
+    return { baseAmount, cgst, sgst, totalGST };
   };
 
   const generateBill = async (paymentMethod: string) => {
