@@ -157,7 +157,7 @@ export default function ReportsScreen() {
 
     Alert.alert(
       'Delete Bill',
-      'Are you sure you want to delete this bill? This will affect reports.',
+      'This will remove the bill and revert the order. Are you sure?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -165,9 +165,35 @@ export default function ReportsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Get bill details first
+              const bill = await db.getFirstAsync(
+                'SELECT * FROM bills WHERE id = ?',
+                [billId]
+              );
+
+              if (!bill) {
+                Alert.alert('Error', 'Bill not found');
+                return;
+              }
+
+              // Delete the bill
               await db.runAsync('DELETE FROM bills WHERE id = ?', [billId]);
+
+              // Revert the order status back to 'preparing'
+              // This ensures the order items are still available but not counted in reports
+              await db.runAsync(
+                'UPDATE orders SET status = ? WHERE id = ?',
+                ['preparing', bill.order_id]
+              );
+
+              // Update table status - make it available again if needed
+              await db.runAsync(
+                'UPDATE tables SET status = ?, current_order_id = ? WHERE table_number = ?',
+                ['occupied', bill.order_id, bill.table_number]
+              );
+
               await loadReports();
-              Alert.alert('Success', 'Bill deleted successfully');
+              Alert.alert('Success', 'Bill deleted and order reverted to preparing state');
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to delete bill');
             }
