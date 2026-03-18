@@ -115,7 +115,7 @@ async def login(request: LoginRequest):
 # User Management Routes (Admin only)
 @api_router.get("/users")
 async def get_users():
-    users = await db.users.find({}, {"password_hash": 0, "pin_hash": 0}).to_list(1000)
+    users = await db.users.find({}, {"password_hash": 0, "pin_hash": 0, "_id": 0}).to_list(1000)
     return {"users": users}
 
 @api_router.post("/users")
