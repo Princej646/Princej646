@@ -213,10 +213,13 @@ export default function TablesScreen() {
       } as any);
     }
 
-    options.push({
-      text: 'Edit Table',
-      onPress: () => openEditTable(table),
-    } as any);
+    // Only admin can edit table details
+    if (user?.role === 'admin') {
+      options.push({
+        text: 'Edit Table',
+        onPress: () => openEditTable(table),
+      } as any);
+    }
 
     Alert.alert(
       `Table ${table.table_number}`,
