@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-gifted-charts';
 import { useRouter } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 
 let useDBStore: any = null;
@@ -37,7 +37,6 @@ interface ItemSale {
 export default function ReportsScreen() {
   const router = useRouter();
   const currentUser = useAuthStore((state) => state.user);
-  const isFocused = useIsFocused();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [selectedView, setSelectedView] = useState<'analytics' | 'bills'>('analytics');
@@ -64,11 +63,13 @@ export default function ReportsScreen() {
   }, [selectedPeriod, currentUser]);
 
   // Reload reports when screen comes into focus (fixes data sync issue between user sessions)
-  useEffect(() => {
-    if (isFocused && Platform.OS !== 'web' && currentUser?.role === 'admin') {
-      loadReports();
-    }
-  }, [isFocused, selectedPeriod]);
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web' && currentUser?.role === 'admin') {
+        loadReports();
+      }
+    }, [selectedPeriod])
+  );
 
   const loadReports = async () => {
     if (!useDBStore) return;

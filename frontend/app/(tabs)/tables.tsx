@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuthStore } from '../../store/authStore';
 
 let useDBStore: any = null;
@@ -35,7 +35,6 @@ interface Table {
 export default function TablesScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
-  const isFocused = useIsFocused();
   const [tables, setTables] = useState<Table[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -54,11 +53,13 @@ export default function TablesScreen() {
   }, []);
 
   // Reload tables when screen comes into focus (fixes data sync issue between user sessions)
-  useEffect(() => {
-    if (isFocused && Platform.OS !== 'web') {
-      loadTables();
-    }
-  }, [isFocused]);
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web') {
+        loadTables();
+      }
+    }, [])
+  );
 
   const loadTables = async () => {
     if (Platform.OS === 'web' || !useDBStore) return;

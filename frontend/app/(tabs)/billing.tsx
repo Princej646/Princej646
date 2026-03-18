@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { COLORS, RESTAURANT } from '../../constants/theme';
 
 let useDBStore: any = null;
@@ -56,7 +56,6 @@ export default function BillingScreen() {
   const [upiAmount, setUpiAmount] = useState('');
   const [tableOrdersMap, setTableOrdersMap] = useState<Map<string, TableOrders>>(new Map());
   const [unprintedOrders, setUnprintedOrders] = useState<any[]>([]); // Orders ready to print bill
-  const isFocused = useIsFocused();
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -65,11 +64,13 @@ export default function BillingScreen() {
   }, []);
 
   // Reload orders when screen comes into focus (fixes data sync issue between user sessions)
-  useEffect(() => {
-    if (isFocused && Platform.OS !== 'web') {
-      loadReadyOrders();
-    }
-  }, [isFocused]);
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== 'web') {
+        loadReadyOrders();
+      }
+    }, [])
+  );
 
   const loadReadyOrders = async () => {
     if (!useDBStore) return;

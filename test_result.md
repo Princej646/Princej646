@@ -180,6 +180,48 @@ frontend:
       - working: true
         agent: "main"
         comment: "Split-screen layout: menu browsing on left, order summary on right. Category tabs, item selection with add-ons, quantity controls, special instructions. Order submission creates KOT record and updates order status to 'preparing'."
+      - working: true
+        agent: "main"
+        comment: "Added Hold KOT feature: Items can be put on hold (pause icon), released (play icon), and sent to kitchen later. Added visual indicators for held/sent items with yellow/green badges. Added 'Send Hold Items' button. Added missing styles for the feature."
+
+  - task: "Hold KOT Feature"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/order/[tableId].tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Implemented Hold KOT feature allowing users to hold specific items within an order and print their KOT later. Features: (1) Toggle hold/release button for each pending item, (2) Visual badges showing HOLD (yellow) or SENT (green) status, (3) 'Send Hold Items' button to send all held items to kitchen at once, (4) Submit order only sends pending items, not held ones."
+
+  - task: "Data Refresh on Screen Focus"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/(tabs)/*.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: false
+        agent: "user"
+        comment: "User reported: Data does not refresh on screens when switching user accounts. When one user logs out and another logs in, screens show stale data."
+      - working: "NA"
+        agent: "main"
+        comment: "Fixed by implementing useFocusEffect hook from @react-navigation/native on all main screens (index.tsx, tables.tsx, billing.tsx, reports.tsx). This is the correct pattern for expo-router. useIsFocused caused errors, switched to useFocusEffect with useCallback. Now screens automatically refresh data when they come into focus."
+
+  - task: "Bluetooth KOT Printing"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/printer.tsx, /app/frontend/utils/bluetoothPrinter.ts, /app/frontend/utils/escpos.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Bluetooth printing infrastructure complete: (1) ESC/POS commands for 80mm printers, (2) BluetoothPrinterService with scan/connect/print, (3) Printer setup UI. NOTE: Requires development build (npx expo run:android/ios), will NOT work in Expo Go. The app gracefully handles this with informative messages."
 
   - task: "Billing System with GST"
     implemented: true
@@ -213,10 +255,10 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Menu Management (Categories, Items, Add-ons)"
-    - "Table Management"
+    - "Hold KOT Feature"
+    - "Data Refresh on Screen Focus"
     - "Order Taking (Captain Interface)"
-    - "Billing System with GST"
+    - "Table Management"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -226,3 +268,5 @@ agent_communication:
     message: "Major feature implementation complete. Built 5 core POS features: (1) Menu Management with full CRUD for categories, items, and add-ons with image support, (2) Table Management with grid view and status tracking, (3) Order Taking with captain interface including split-screen layout, add-ons selection, and KOT generation, (4) Billing System with 5% GST breakdown (CGST/SGST), multiple payment methods, and complete order lifecycle. (5) All features use SQLite for offline operation. Ready for mobile device testing."
   - agent: "testing"
     message: "Backend authentication API testing completed successfully. All 13 test scenarios passed with 100% success rate. Health check endpoint working correctly. PIN and password authentication verified for all 4 user roles (admin, manager, captain, cashier). Invalid credential rejection working properly with 401 status codes. API responses contain correct user data structure. Backend service is stable and running properly on supervisor. No critical issues found - authentication system is fully functional."
+  - agent: "main"
+    message: "Implemented two key fixes: (1) HOLD KOT FEATURE - Added UI for holding specific order items with toggle buttons, visual badges (HOLD/SENT status), and 'Send Hold Items' button. Added missing styles for orderItemHold, orderItemSent, kotStatusBadge, holdButton, sendHoldButton. (2) DATA REFRESH BUG FIX - Replaced pathname-based focus detection with proper useIsFocused hook from @react-navigation/native on all main screens (index.tsx, tables.tsx, billing.tsx, reports.tsx). This ensures fresh data loads when switching between user accounts. NOTE: Web preview will show error due to expo-sqlite - this is expected, app is mobile-only. Please test on mobile device using Expo Go."
