@@ -793,9 +793,9 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
   },
   totalPaidValue: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#4ECDC4',
+    color: '#FF6B35',
   },
   modalButtons: {
     flexDirection: 'row',
