@@ -203,8 +203,48 @@ export default function BillingScreen() {
         { text: 'Cash', onPress: () => handleSettleBill('Cash') },
         { text: 'Card', onPress: () => handleSettleBill('Card') },
         { text: 'UPI', onPress: () => handleSettleBill('UPI') },
+        { 
+          text: 'Part Payment', 
+          onPress: () => {
+            setCashAmount('');
+            setCardAmount('');
+            setUpiAmount('');
+            setShowPartPaymentModal(true);
+          }
+        },
       ]
     );
+  };
+
+  const handlePartPayment = () => {
+    const cash = parseFloat(cashAmount) || 0;
+    const card = parseFloat(cardAmount) || 0;
+    const upi = parseFloat(upiAmount) || 0;
+    const totalPaid = cash + card + upi;
+    const billTotal = calculateSubtotal();
+
+    if (totalPaid === 0) {
+      Alert.alert('Error', 'Please enter at least one payment amount');
+      return;
+    }
+
+    if (Math.abs(totalPaid - billTotal) > 0.01) {
+      Alert.alert(
+        'Amount Mismatch',
+        `Total paid: ₹${totalPaid.toFixed(2)}\nBill amount: ₹${billTotal.toFixed(2)}\n\nPlease adjust the amounts to match the bill.`
+      );
+      return;
+    }
+
+    // Build payment method string
+    const paymentParts = [];
+    if (cash > 0) paymentParts.push(`Cash: ₹${cash.toFixed(2)}`);
+    if (card > 0) paymentParts.push(`Card: ₹${card.toFixed(2)}`);
+    if (upi > 0) paymentParts.push(`UPI: ₹${upi.toFixed(2)}`);
+    const paymentMethod = paymentParts.join(' + ');
+
+    setShowPartPaymentModal(false);
+    handleSettleBill(paymentMethod);
   };
 
   const onRefresh = async () => {
