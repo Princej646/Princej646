@@ -190,15 +190,15 @@ export default function BillingScreen() {
     );
   };
 
-  const handleGenerateBill = () => {
+  const handleSettleBillPrompt = () => {
     Alert.alert(
-      'Payment Method',
-      'Select payment method',
+      'Select Payment Method',
+      'How did the customer pay?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Cash', onPress: () => generateBill('Cash') },
-        { text: 'Card', onPress: () => generateBill('Card') },
-        { text: 'UPI', onPress: () => generateBill('UPI') },
+        { text: 'Cash', onPress: () => handleSettleBill('Cash') },
+        { text: 'Card', onPress: () => handleSettleBill('Card') },
+        { text: 'UPI', onPress: () => handleSettleBill('UPI') },
       ]
     );
   };
