@@ -27,6 +27,8 @@ interface Table {
   seats: number;
   status: string;
   current_order_id: string | null;
+  pending_bills_count?: number;
+  active_order_id?: string | null;
 }
 
 export default function TablesScreen() {
@@ -55,9 +57,14 @@ export default function TablesScreen() {
     const db = useDBStore.getState().getDatabase();
     if (!db) return;
     try {
-      const result = await db.getAllAsync<Table>(
-        'SELECT * FROM tables ORDER BY table_number'
-      );
+      // Get tables with additional info about pending bills and active orders
+      const result = await db.getAllAsync<Table>(`
+        SELECT t.*,
+          (SELECT COUNT(*) FROM orders o WHERE o.table_id = t.id AND o.bill_printed = 1 AND o.status = 'preparing') as pending_bills_count,
+          (SELECT o.id FROM orders o WHERE o.table_id = t.id AND o.bill_printed = 0 AND o.status IN ('pending', 'preparing') LIMIT 1) as active_order_id
+        FROM tables t
+        ORDER BY t.table_number
+      `);
       setTables(result);
     } catch (error) {
       console.error('Error loading tables:', error);
@@ -141,8 +148,16 @@ export default function TablesScreen() {
       return;
     }
 
-    if (toTable.status !== 'available') {
-      Alert.alert('Error', 'Target table is not available');
+    // Check target table doesn't have active orders
+    const targetHasActiveOrder = toTable.active_order_id || toTable.current_order_id;
+    if (targetHasActiveOrder) {
+      Alert.alert('Error', 'Target table already has an active order');
+      return;
+    }
+
+    const activeOrderId = transferFromTable.active_order_id || transferFromTable.current_order_id;
+    if (!activeOrderId) {
+      Alert.alert('Error', 'No active order to transfer');
       return;
     }
 
@@ -150,19 +165,28 @@ export default function TablesScreen() {
       // Update the order's table_id
       await db.runAsync(
         'UPDATE orders SET table_id = ? WHERE id = ?',
-        [transferToTableId, transferFromTable.current_order_id]
+        [transferToTableId, activeOrderId]
       );
 
-      // Update the old table
-      await db.runAsync(
-        'UPDATE tables SET status = ?, current_order_id = NULL WHERE id = ?',
-        ['available', transferFromTable.id]
+      // Check if source table still has any orders
+      const remainingOrders = await db.getFirstAsync<{ count: number }>(
+        `SELECT COUNT(*) as count FROM orders 
+         WHERE table_id = ? AND status IN ('pending', 'preparing')`,
+        [transferFromTable.id]
       );
 
-      // Update the new table
+      // Update the old table status
+      if (remainingOrders?.count === 0) {
+        await db.runAsync(
+          'UPDATE tables SET status = ? WHERE id = ?',
+          ['available', transferFromTable.id]
+        );
+      }
+
+      // Update the new table status
       await db.runAsync(
-        'UPDATE tables SET status = ?, current_order_id = ? WHERE id = ?',
-        ['occupied', transferFromTable.current_order_id, transferToTableId]
+        'UPDATE tables SET status = ? WHERE id = ?',
+        ['occupied', transferToTableId]
       );
 
       setTransferModalVisible(false);
@@ -183,7 +207,8 @@ export default function TablesScreen() {
   };
 
   const openTransferModal = (table: Table) => {
-    if (table.status !== 'occupied' || !table.current_order_id) {
+    const hasActiveOrder = table.active_order_id || table.current_order_id;
+    if (!hasActiveOrder) {
       Alert.alert('Error', 'This table has no active order to transfer');
       return;
     }
@@ -193,24 +218,40 @@ export default function TablesScreen() {
   };
 
   const handleTablePress = (table: Table) => {
-    const options = [
+    const options: any[] = [
       { text: 'Cancel', style: 'cancel' as const },
     ];
 
-    if (table.status === 'available') {
+    const hasActiveOrder = table.active_order_id || table.current_order_id;
+    const hasPendingBills = (table.pending_bills_count || 0) > 0;
+
+    // Always allow taking/viewing orders
+    if (!hasActiveOrder) {
       options.push({
         text: 'Take Order',
         onPress: () => router.push(`/order/${table.id}`),
-      } as any);
+      });
     } else {
       options.push({
-        text: 'View Order',
+        text: 'View/Edit Order',
         onPress: () => router.push(`/order/${table.id}`),
-      } as any);
+      });
+    }
+
+    // If there are pending bills, show option to add new order
+    if (hasPendingBills && !hasActiveOrder) {
+      options.push({
+        text: 'Add New Order',
+        onPress: () => router.push(`/order/${table.id}`),
+      });
+    }
+
+    // Transfer only if there's an active order (not yet billed)
+    if (hasActiveOrder) {
       options.push({
         text: 'Transfer Order',
         onPress: () => openTransferModal(table),
-      } as any);
+      });
     }
 
     // Only admin can edit table details
@@ -218,26 +259,55 @@ export default function TablesScreen() {
       options.push({
         text: 'Edit Table',
         onPress: () => openEditTable(table),
-      } as any);
+      });
     }
+
+    // Build status text
+    let statusText = `Status: ${table.status}`;
+    if (hasPendingBills) {
+      statusText += `\nPending Bills: ${table.pending_bills_count}`;
+    }
+    if (hasActiveOrder) {
+      statusText += `\nActive Order: Yes`;
+    }
+    statusText += `\nSeats: ${table.seats}`;
 
     Alert.alert(
       `Table ${table.table_number}`,
-      `Status: ${table.status}\nSeats: ${table.seats}`,
+      statusText,
       options
     );
   };
 
-  const getTableColor = (status: string) => {
-    switch (status) {
-      case 'available':
-        return '#4ECDC4';
-      case 'occupied':
-        return '#FF6B35';
-      case 'reserved':
-        return '#95E1D3';
-      default:
-        return '#999';
+  const getTableColor = (table: Table) => {
+    const hasActiveOrder = table.active_order_id || table.current_order_id;
+    const hasPendingBills = (table.pending_bills_count || 0) > 0;
+
+    if (hasPendingBills && hasActiveOrder) {
+      return '#9C27B0'; // Purple: has both pending bill AND active order
+    } else if (hasPendingBills) {
+      return '#FF9800'; // Orange: has pending bill(s), awaiting settlement
+    } else if (hasActiveOrder || table.status === 'occupied') {
+      return '#FF6B35'; // Red-orange: occupied with active order
+    } else if (table.status === 'reserved') {
+      return '#95E1D3';
+    } else {
+      return '#4ECDC4'; // Teal: available
+    }
+  };
+
+  const getTableStatus = (table: Table) => {
+    const hasActiveOrder = table.active_order_id || table.current_order_id;
+    const hasPendingBills = (table.pending_bills_count || 0) > 0;
+
+    if (hasPendingBills && hasActiveOrder) {
+      return 'billing+order';
+    } else if (hasPendingBills) {
+      return 'billing';
+    } else if (hasActiveOrder || table.status === 'occupied') {
+      return 'occupied';
+    } else {
+      return table.status;
     }
   };
 
@@ -265,7 +335,7 @@ export default function TablesScreen() {
             key={table.id}
             style={[
               styles.tableCard,
-              { borderTopColor: getTableColor(table.status) },
+              { borderTopColor: getTableColor(table) },
             ]}
             onPress={() => handleTablePress(table)}
           >
@@ -274,16 +344,24 @@ export default function TablesScreen() {
               <View
                 style={[
                   styles.statusBadge,
-                  { backgroundColor: getTableColor(table.status) },
+                  { backgroundColor: getTableColor(table) },
                 ]}
               >
-                <Text style={styles.statusText}>{table.status}</Text>
+                <Text style={styles.statusText}>{getTableStatus(table)}</Text>
               </View>
             </View>
             <View style={styles.tableInfo}>
               <Ionicons name="person" size={16} color="#666" />
               <Text style={styles.seatsText}>{table.seats} seats</Text>
             </View>
+            {(table.pending_bills_count || 0) > 0 && (
+              <View style={styles.pendingBillsBadge}>
+                <Ionicons name="receipt" size={14} color="#FF9800" />
+                <Text style={styles.pendingBillsText}>
+                  {table.pending_bills_count} bill{(table.pending_bills_count || 0) > 1 ? 's' : ''} pending
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -552,6 +630,21 @@ const styles = StyleSheet.create({
   seatsText: {
     fontSize: 14,
     color: '#666',
+  },
+  pendingBillsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 4,
+  },
+  pendingBillsText: {
+    fontSize: 12,
+    color: '#FF9800',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

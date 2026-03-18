@@ -72,6 +72,7 @@ export const useDBStore = create<DBState>((set) => ({
           created_by_user_id TEXT,
           created_by_username TEXT,
           status TEXT DEFAULT 'pending',
+          bill_printed INTEGER DEFAULT 0,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY(table_id) REFERENCES tables(id)
@@ -91,7 +92,8 @@ export const useDBStore = create<DBState>((set) => ({
 
         CREATE TABLE IF NOT EXISTS bills (
           id TEXT PRIMARY KEY,
-          order_id TEXT UNIQUE,
+          order_id TEXT,
+          order_ids_json TEXT,
           table_number TEXT,
           subtotal REAL NOT NULL,
           cgst REAL NOT NULL,
@@ -123,6 +125,9 @@ export const useDBStore = create<DBState>((set) => ({
         await insertDemoData(db);
       }
 
+      // Run migrations for existing databases
+      await runMigrations(db);
+
       set({ isInitialized: true });
     } catch (error) {
       console.error('Database initialization error:', error);
@@ -131,6 +136,35 @@ export const useDBStore = create<DBState>((set) => ({
   },
   getDatabase: () => db,
 }));
+
+// Migration function to add new columns to existing database
+async function runMigrations(database: SQLite.SQLiteDatabase) {
+  try {
+    // Check if bill_printed column exists in orders table
+    const orderColumns = await database.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(orders)"
+    );
+    const hasBillPrinted = orderColumns.some(col => col.name === 'bill_printed');
+    
+    if (!hasBillPrinted) {
+      await database.runAsync('ALTER TABLE orders ADD COLUMN bill_printed INTEGER DEFAULT 0');
+      console.log('Migration: Added bill_printed column to orders table');
+    }
+
+    // Check if order_ids_json column exists in bills table
+    const billColumns = await database.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(bills)"
+    );
+    const hasOrderIdsJson = billColumns.some(col => col.name === 'order_ids_json');
+    
+    if (!hasOrderIdsJson) {
+      await database.runAsync('ALTER TABLE bills ADD COLUMN order_ids_json TEXT');
+      console.log('Migration: Added order_ids_json column to bills table');
+    }
+  } catch (error) {
+    console.error('Migration error:', error);
+  }
+}
 
 async function insertDemoData(database: SQLite.SQLiteDatabase) {
   await database.execAsync(`

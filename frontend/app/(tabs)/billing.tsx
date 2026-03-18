@@ -24,6 +24,7 @@ interface Order {
   table_id: string;
   status: string;
   created_at: string;
+  bill_printed: number;
 }
 
 interface OrderItem {
@@ -32,11 +33,18 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   addons_json: string | null;
+  order_id?: string;
+}
+
+interface TableOrders {
+  table_id: string;
+  table_number: string;
+  orders: Order[];
 }
 
 export default function BillingScreen() {
   const [readyOrders, setReadyOrders] = useState<any[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [selectedOrders, setSelectedOrders] = useState<any[]>([]); // Support multiple orders
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [billPrinted, setBillPrinted] = useState(false);
@@ -44,6 +52,8 @@ export default function BillingScreen() {
   const [cashAmount, setCashAmount] = useState('');
   const [cardAmount, setCardAmount] = useState('');
   const [upiAmount, setUpiAmount] = useState('');
+  const [tableOrdersMap, setTableOrdersMap] = useState<Map<string, TableOrders>>(new Map());
+  const [unprintedOrders, setUnprintedOrders] = useState<any[]>([]); // Orders ready to print bill
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -57,34 +67,76 @@ export default function BillingScreen() {
     if (!db) return;
 
     try {
-      const orders = await db.getAllAsync(`
+      // Get orders that have bill printed and ready for settlement
+      const printedOrders = await db.getAllAsync(`
         SELECT o.*, t.table_number 
         FROM orders o
         LEFT JOIN tables t ON o.table_id = t.id
-        WHERE o.status = 'preparing'
-        ORDER BY o.created_at DESC
+        WHERE o.status = 'preparing' AND o.bill_printed = 1
+        ORDER BY t.table_number, o.created_at DESC
       `);
-      setReadyOrders(orders);
+      
+      // Get orders ready for bill printing (submitted to kitchen but bill not printed)
+      const unprintedOrdersResult = await db.getAllAsync(`
+        SELECT o.*, t.table_number 
+        FROM orders o
+        LEFT JOIN tables t ON o.table_id = t.id
+        WHERE o.status = 'preparing' AND o.bill_printed = 0
+        ORDER BY t.table_number, o.created_at DESC
+      `);
+      
+      setUnprintedOrders(unprintedOrdersResult);
+      
+      // Group printed orders by table
+      const tableMap = new Map<string, TableOrders>();
+      for (const order of printedOrders) {
+        const tableId = order.table_id;
+        if (!tableMap.has(tableId)) {
+          tableMap.set(tableId, {
+            table_id: tableId,
+            table_number: order.table_number,
+            orders: []
+          });
+        }
+        tableMap.get(tableId)!.orders.push(order);
+      }
+      
+      setTableOrdersMap(tableMap);
+      setReadyOrders(printedOrders);
     } catch (error) {
       console.error('Error loading ready orders:', error);
     }
   };
 
-  const loadOrderDetails = async (order: any) => {
+  const loadOrderDetails = async (orders: any[]) => {
     if (!useDBStore) return;
     const db = useDBStore.getState().getDatabase();
     if (!db) return;
 
     try {
-      const items = await db.getAllAsync<OrderItem>(
-        'SELECT * FROM order_items WHERE order_id = ?',
-        [order.id]
-      );
-      setOrderItems(items);
-      setSelectedOrder(order);
+      // Load items from all selected orders
+      const allItems: OrderItem[] = [];
+      for (const order of orders) {
+        const items = await db.getAllAsync<OrderItem>(
+          'SELECT *, ? as order_id FROM order_items WHERE order_id = ?',
+          [order.id, order.id]
+        );
+        allItems.push(...items);
+      }
+      setOrderItems(allItems);
+      setSelectedOrders(orders);
     } catch (error) {
       console.error('Error loading order details:', error);
     }
+  };
+
+  const loadSingleOrderDetails = async (order: any) => {
+    loadOrderDetails([order]);
+  };
+
+  const loadTableOrders = async (tableOrders: TableOrders) => {
+    // Load all orders for this table
+    loadOrderDetails(tableOrders.orders);
   };
 
   const calculateSubtotal = () => {
@@ -101,7 +153,11 @@ export default function BillingScreen() {
     return { baseAmount, cgst, sgst, totalGST };
   };
 
-  const handlePrintBill = () => {
+  const handlePrintBill = async () => {
+    if (!useDBStore || selectedOrders.length === 0) return;
+    const db = useDBStore.getState().getDatabase();
+    if (!db) return;
+
     Alert.alert(
       'Print Bill',
       'Bill will be printed. Proceed to settle payment after customer pays.',
@@ -109,19 +165,34 @@ export default function BillingScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Print',
-          onPress: () => {
-            // Here you would integrate with actual printer
-            // For now, just mark as printed
-            setBillPrinted(true);
-            Alert.alert('Success', 'Bill printed successfully. Now settle the payment.');
+          onPress: async () => {
+            try {
+              // Mark all selected orders as bill_printed
+              for (const order of selectedOrders) {
+                await db.runAsync(
+                  'UPDATE orders SET bill_printed = 1 WHERE id = ?',
+                  [order.id]
+                );
+              }
+              // Here you would integrate with actual printer
+              setBillPrinted(true);
+              Alert.alert('Success', 'Bill printed successfully. Now settle the payment.');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to print bill');
+            }
           },
         },
       ]
     );
   };
 
+  // Function to load and show an unprinted order for bill printing
+  const handlePrintOrderBill = async (order: any) => {
+    loadSingleOrderDetails(order);
+  };
+
   const handleSettleBill = (paymentMethod: string) => {
-    if (!useDBStore || !selectedOrder) return;
+    if (!useDBStore || selectedOrders.length === 0) return;
     const db = useDBStore.getState().getDatabase();
     if (!db) return;
 
@@ -131,9 +202,12 @@ export default function BillingScreen() {
       return;
     }
 
+    const orderCount = selectedOrders.length;
+    const tableNumber = selectedOrders[0].table_number;
+
     Alert.alert(
       'Settle Bill',
-      `Customer paid via ${paymentMethod}?`,
+      `Settle ${orderCount} order${orderCount > 1 ? 's' : ''} via ${paymentMethod}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -144,15 +218,19 @@ export default function BillingScreen() {
               const gst = calculateGST(total);
 
               const billId = `bill_${Date.now()}`;
+              const orderIds = selectedOrders.map(o => o.id);
+              const orderIdsJson = JSON.stringify(orderIds);
+              
               await db.runAsync(`
                 INSERT INTO bills (
-                  id, order_id, table_number, subtotal, cgst, sgst, total, 
+                  id, order_id, order_ids_json, table_number, subtotal, cgst, sgst, total, 
                   payment_method, billed_by_user_id, billed_by_username
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               `, [
                 billId,
-                selectedOrder.id,
-                selectedOrder.table_number,
+                orderIds[0], // Primary order ID for backward compatibility
+                orderIdsJson, // All order IDs as JSON
+                tableNumber,
                 gst.baseAmount, // Base amount without GST
                 gst.cgst,
                 gst.sgst,
@@ -162,15 +240,29 @@ export default function BillingScreen() {
                 user.username,
               ]);
 
-              await db.runAsync(
-                'UPDATE orders SET status = ? WHERE id = ?',
-                ['completed', selectedOrder.id]
+              // Mark all orders as completed
+              for (const order of selectedOrders) {
+                await db.runAsync(
+                  'UPDATE orders SET status = ? WHERE id = ?',
+                  ['completed', order.id]
+                );
+              }
+
+              // Check if table still has any active orders or pending bills
+              const tableId = selectedOrders[0].table_id;
+              const remainingOrders = await db.getFirstAsync<{ count: number }>(
+                `SELECT COUNT(*) as count FROM orders 
+                 WHERE table_id = ? AND status IN ('pending', 'preparing')`,
+                [tableId]
               );
 
-              await db.runAsync(
-                'UPDATE tables SET status = ?, current_order_id = NULL WHERE id = ?',
-                ['available', selectedOrder.table_id]
-              );
+              // Only set table to available if no more orders
+              if (remainingOrders?.count === 0) {
+                await db.runAsync(
+                  'UPDATE tables SET status = ? WHERE id = ?',
+                  ['available', tableId]
+                );
+              }
 
               Alert.alert(
                 'Success',
@@ -179,7 +271,7 @@ export default function BillingScreen() {
                   {
                     text: 'OK',
                     onPress: () => {
-                      setSelectedOrder(null);
+                      setSelectedOrders([]);
                       setOrderItems([]);
                       setBillPrinted(false);
                       loadReadyOrders();
@@ -273,12 +365,13 @@ export default function BillingScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Billing</Text>
-        {selectedOrder && (
+        {selectedOrders.length > 0 && (
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => {
-              setSelectedOrder(null);
+              setSelectedOrders([]);
               setOrderItems([]);
+              setBillPrinted(false);
             }}
           >
             <Ionicons name="close" size={24} color="#666" />
@@ -286,7 +379,7 @@ export default function BillingScreen() {
         )}
       </View>
 
-      {!selectedOrder ? (
+      {selectedOrders.length === 0 ? (
         <ScrollView
           style={styles.scrollView}
           refreshControl={
@@ -294,36 +387,84 @@ export default function BillingScreen() {
           }
         >
           <View style={styles.ordersList}>
-            {readyOrders.length === 0 ? (
+            {/* Section: Orders Ready to Print Bill */}
+            {unprintedOrders.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionHeader}>Ready to Print Bill</Text>
+                {unprintedOrders.map((order) => (
+                  <TouchableOpacity
+                    key={order.id}
+                    style={[styles.orderCard, styles.unprintedOrderCard]}
+                    onPress={() => handlePrintOrderBill(order)}
+                  >
+                    <View style={styles.orderCardHeader}>
+                      <View>
+                        <Text style={styles.tableNumber}>Table {order.table_number}</Text>
+                        <Text style={styles.orderId}>Order #{order.id.slice(-8)}</Text>
+                        <Text style={styles.orderTime}>
+                          {new Date(order.created_at).toLocaleTimeString()}
+                        </Text>
+                      </View>
+                      <View style={[styles.statusBadge, styles.readyBadge]}>
+                        <Ionicons name="print" size={16} color="#4ECDC4" />
+                        <Text style={styles.statusTextTeal}>Print Bill</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Section: Pending Settlement */}
+            {tableOrdersMap.size > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionHeader}>Pending Settlement</Text>
+                {Array.from(tableOrdersMap.values()).map((tableOrders) => (
+                  <View key={tableOrders.table_id} style={styles.tableOrdersCard}>
+                    <View style={styles.tableOrdersHeader}>
+                      <Text style={styles.tableNumber}>Table {tableOrders.table_number}</Text>
+                      {tableOrders.orders.length > 1 && (
+                        <TouchableOpacity
+                          style={styles.mergeButton}
+                          onPress={() => loadTableOrders(tableOrders)}
+                        >
+                          <Ionicons name="git-merge" size={16} color="#FFF" />
+                          <Text style={styles.mergeButtonText}>Merge All ({tableOrders.orders.length})</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    
+                    {tableOrders.orders.map((order) => (
+                      <TouchableOpacity
+                        key={order.id}
+                        style={styles.orderCard}
+                        onPress={() => loadSingleOrderDetails(order)}
+                      >
+                        <View style={styles.orderCardHeader}>
+                          <View>
+                            <Text style={styles.orderId}>Order #{order.id.slice(-8)}</Text>
+                            <Text style={styles.orderTime}>
+                              {new Date(order.created_at).toLocaleTimeString()}
+                            </Text>
+                          </View>
+                          <View style={styles.statusBadge}>
+                            <Ionicons name="receipt" size={16} color="#FF9800" />
+                            <Text style={styles.statusTextOrange}>Bill Printed</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Empty State */}
+            {unprintedOrders.length === 0 && tableOrdersMap.size === 0 && (
               <View style={styles.emptyState}>
                 <Ionicons name="receipt-outline" size={64} color="#E0E0E0" />
                 <Text style={styles.emptyStateText}>No orders ready for billing</Text>
               </View>
-            ) : (
-              readyOrders.map((order) => (
-                <TouchableOpacity
-                  key={order.id}
-                  style={styles.orderCard}
-                  onPress={() => loadOrderDetails(order)}
-                >
-                  <View style={styles.orderCardHeader}>
-                    <View>
-                      <Text style={styles.tableNumber}>Table {order.table_number}</Text>
-                      <Text style={styles.orderId}>Order #{order.id.slice(-8)}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={24} color="#999" />
-                  </View>
-                  <View style={styles.orderCardFooter}>
-                    <View style={styles.statusBadge}>
-                      <Ionicons name="time" size={16} color="#FF6B35" />
-                      <Text style={styles.statusText}>Ready</Text>
-                    </View>
-                    <Text style={styles.orderTime}>
-                      {new Date(order.created_at).toLocaleTimeString()}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))
             )}
           </View>
         </ScrollView>
@@ -331,11 +472,24 @@ export default function BillingScreen() {
         <ScrollView style={styles.scrollView}>
           <View style={styles.billContainer}>
             <View style={styles.billHeader}>
-              <Text style={styles.billTitle}>Table {selectedOrder.table_number}</Text>
-              <Text style={styles.billOrderId}>Order #{selectedOrder.id.slice(-8)}</Text>
-              <Text style={styles.billDate}>
-                {new Date(selectedOrder.created_at).toLocaleString()}
-              </Text>
+              <Text style={styles.billTitle}>Table {selectedOrders[0].table_number}</Text>
+              {selectedOrders.length === 1 ? (
+                <>
+                  <Text style={styles.billOrderId}>Order #{selectedOrders[0].id.slice(-8)}</Text>
+                  <Text style={styles.billDate}>
+                    {new Date(selectedOrders[0].created_at).toLocaleString()}
+                  </Text>
+                </>
+              ) : (
+                <View style={styles.mergedOrdersInfo}>
+                  <Text style={styles.mergedOrdersTitle}>{selectedOrders.length} Orders Combined</Text>
+                  {selectedOrders.map((order, idx) => (
+                    <Text key={order.id} style={styles.mergedOrderId}>
+                      #{order.id.slice(-8)} ({new Date(order.created_at).toLocaleTimeString()})
+                    </Text>
+                  ))}
+                </View>
+              )}
             </View>
 
             <View style={styles.billItems}>
@@ -533,22 +687,79 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 16,
   },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
   orderCard: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF9800',
+  },
+  unprintedOrderCard: {
+    backgroundColor: '#FFF',
+    borderLeftColor: '#4ECDC4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  readyBadge: {
+    backgroundColor: '#E0F7F5',
+  },
+  statusTextTeal: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4ECDC4',
+  },
+  orderCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  tableOrdersCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  orderCardHeader: {
+  tableOrdersHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  mergeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#9C27B0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  mergeButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   tableNumber: {
     fontSize: 20,
@@ -557,8 +768,8 @@ const styles = StyleSheet.create({
   },
   orderId: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    fontWeight: '600',
+    color: '#1A1A1A',
   },
   orderCardFooter: {
     flexDirection: 'row',
@@ -579,8 +790,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FF6B35',
   },
+  statusTextOrange: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF9800',
+  },
   orderTime: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#999',
   },
   billContainer: {
@@ -592,6 +808,21 @@ const styles = StyleSheet.create({
     padding: 24,
     marginBottom: 16,
     alignItems: 'center',
+  },
+  mergedOrdersInfo: {
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  mergedOrdersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9C27B0',
+    marginBottom: 8,
+  },
+  mergedOrderId: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
   },
   billTitle: {
     fontSize: 28,

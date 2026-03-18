@@ -95,18 +95,25 @@ export default function OrderScreen() {
       );
       setTable(tableResult);
 
-      if (tableResult?.current_order_id) {
-        const orderResult = await db.getFirstAsync(
-          'SELECT * FROM orders WHERE id = ?',
-          [tableResult.current_order_id]
-        );
+      // Find active order that hasn't been billed yet
+      const orderResult = await db.getFirstAsync(
+        `SELECT * FROM orders 
+         WHERE table_id = ? AND bill_printed = 0 AND status IN ('pending', 'preparing')
+         ORDER BY created_at DESC LIMIT 1`,
+        [tableId]
+      );
+      
+      if (orderResult) {
         setOrder(orderResult);
         
         const items = await db.getAllAsync<OrderItem>(
           'SELECT * FROM order_items WHERE order_id = ?',
-          [tableResult.current_order_id]
+          [orderResult.id]
         );
         setOrderItems(items);
+      } else {
+        setOrder(null);
+        setOrderItems([]);
       }
     } catch (error) {
       console.error('Error loading table and order:', error);
@@ -171,13 +178,14 @@ export default function OrderScreen() {
     try {
       const orderId = `order_${Date.now()}`;
       await db.runAsync(
-        'INSERT INTO orders (id, table_id, created_by_user_id, created_by_username, status) VALUES (?, ?, ?, ?, ?)',
-        [orderId, tableId, user.id, user.username, 'pending']
+        'INSERT INTO orders (id, table_id, created_by_user_id, created_by_username, status, bill_printed) VALUES (?, ?, ?, ?, ?, ?)',
+        [orderId, tableId, user.id, user.username, 'pending', 0]
       );
       
+      // Update table status to occupied
       await db.runAsync(
-        'UPDATE tables SET status = ?, current_order_id = ? WHERE id = ?',
-        ['occupied', orderId, tableId]
+        'UPDATE tables SET status = ? WHERE id = ?',
+        ['occupied', tableId]
       );
       
       return orderId;
