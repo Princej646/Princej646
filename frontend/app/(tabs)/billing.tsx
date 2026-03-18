@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
   confirmButton: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: '#4CAF50',
   },
   cancelButtonText: {
     fontSize: 16,
