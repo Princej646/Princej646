@@ -341,6 +341,135 @@ export default function TablesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Edit Table Modal */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Table</Text>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Table Number</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., T7"
+                value={newTableNumber}
+                onChangeText={setNewTableNumber}
+                autoCapitalize="characters"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Number of Seats</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="4"
+                value={newTableSeats}
+                onChangeText={setNewTableSeats}
+                keyboardType="numeric"
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setEditModalVisible(false);
+                  setEditingTable(null);
+                  setNewTableNumber('');
+                  setNewTableSeats('4');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleEditTable}
+              >
+                <Text style={styles.confirmButtonText}>Update Table</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Transfer Order Modal */}
+      <Modal
+        visible={transferModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setTransferModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Transfer Order</Text>
+            <Text style={styles.modalSubtitle}>
+              From: Table {transferFromTable?.table_number}
+            </Text>
+
+            <Text style={styles.inputLabel}>Select Target Table</Text>
+            <ScrollView style={styles.transferTableList}>
+              {tables
+                .filter(
+                  (t) => t.status === 'available' && t.id !== transferFromTable?.id
+                )
+                .map((table) => (
+                  <TouchableOpacity
+                    key={table.id}
+                    style={[
+                      styles.transferTableOption,
+                      transferToTableId === table.id && styles.transferTableOptionSelected,
+                    ]}
+                    onPress={() => setTransferToTableId(table.id)}
+                  >
+                    <View style={styles.transferTableInfo}>
+                      <Text style={styles.transferTableNumber}>
+                        {table.table_number}
+                      </Text>
+                      <Text style={styles.transferTableSeats}>
+                        {table.seats} seats
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={
+                        transferToTableId === table.id
+                          ? 'radio-button-on'
+                          : 'radio-button-off'
+                      }
+                      size={24}
+                      color={transferToTableId === table.id ? '#4ECDC4' : '#999'}
+                    />
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setTransferModalVisible(false);
+                  setTransferFromTable(null);
+                  setTransferToTableId('');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleTransferOrder}
+                disabled={!transferToTableId}
+              >
+                <Text style={styles.confirmButtonText}>Transfer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
