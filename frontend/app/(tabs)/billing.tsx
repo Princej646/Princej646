@@ -287,11 +287,17 @@ export default function BillingScreen() {
               <Text style={styles.sectionTitle}>Bill Summary</Text>
               
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal</Text>
+                <Text style={styles.summaryLabel}>Total (incl. GST)</Text>
                 <Text style={styles.summaryValue}>₹{calculateSubtotal().toFixed(2)}</Text>
               </View>
 
               <View style={styles.gstSection}>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Base Amount</Text>
+                  <Text style={styles.summaryValue}>
+                    ₹{calculateGST(calculateSubtotal()).baseAmount.toFixed(2)}
+                  </Text>
+                </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>CGST (2.5%)</Text>
                   <Text style={styles.summaryValue}>
@@ -307,9 +313,9 @@ export default function BillingScreen() {
               </View>
 
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total Amount</Text>
+                <Text style={styles.totalLabel}>Total Payable</Text>
                 <Text style={styles.totalValue}>
-                  ₹{(calculateSubtotal() + calculateGST(calculateSubtotal()).total).toFixed(2)}
+                  ₹{calculateSubtotal().toFixed(2)}
                 </Text>
               </View>
             </View>
