@@ -349,6 +349,57 @@ export default function OrderScreen() {
     return orderItems.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
   };
 
+  const handleCancelOrder = async () => {
+    if (!useDBStore || !order) {
+      Alert.alert('Error', 'No order to cancel');
+      return;
+    }
+
+    const db = useDBStore.getState().getDatabase();
+    if (!db) return;
+
+    Alert.alert(
+      'Cancel Order',
+      'Are you sure you want to cancel this order? All items will be removed.',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel Order',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete all order items
+              await db.runAsync('DELETE FROM order_items WHERE order_id = ?', [order.id]);
+              
+              // Delete the order
+              await db.runAsync('DELETE FROM orders WHERE id = ?', [order.id]);
+              
+              // Check if table still has any other orders
+              const remainingOrders = await db.getFirstAsync<{ count: number }>(
+                `SELECT COUNT(*) as count FROM orders 
+                 WHERE table_id = ? AND status IN ('pending', 'preparing')`,
+                [tableId]
+              );
+
+              // Update table status if no more orders
+              if (remainingOrders?.count === 0) {
+                await db.runAsync(
+                  'UPDATE tables SET status = ? WHERE id = ?',
+                  ['available', tableId]
+                );
+              }
+
+              Alert.alert('Success', 'Order cancelled successfully');
+              router.back();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to cancel order');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (Platform.OS === 'web') {
     return (
       <SafeAreaView style={styles.container}>
@@ -369,14 +420,24 @@ export default function OrderScreen() {
             {order ? `Order #${order.id.slice(-8)}` : 'New Order'}
           </Text>
         </View>
-        {orderItems.length > 0 && (
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleSubmitOrder}
-          >
-            <Ionicons name="send" size={20} color="#FFF" />
-          </TouchableOpacity>
-        )}
+        <View style={styles.headerActions}>
+          {order && orderItems.length > 0 && (
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancelOrder}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+            </TouchableOpacity>
+          )}
+          {orderItems.length > 0 && (
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleSubmitOrder}
+            >
+              <Ionicons name="send" size={20} color="#FFF" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -608,6 +669,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  cancelButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submitButton: {
     width: 48,
