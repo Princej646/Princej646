@@ -175,11 +175,13 @@ export default function HomeScreen() {
             <Text style={styles.statValue}>{stats.todayOrders}</Text>
             <Text style={styles.statLabel}>Today Orders</Text>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="cash-outline" size={32} color="#F38181" />
-            <Text style={styles.statValue}>₹{stats.todayRevenue.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>Today Revenue</Text>
-          </View>
+          {user?.role !== 'captain' && (
+            <View style={styles.statCard}>
+              <Ionicons name="cash-outline" size={32} color="#F38181" />
+              <Text style={styles.statValue}>₹{stats.todayRevenue.toFixed(2)}</Text>
+              <Text style={styles.statLabel}>Today Revenue</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
