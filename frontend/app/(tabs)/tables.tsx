@@ -72,7 +72,7 @@ export default function TablesScreen() {
       const result = await db.getAllAsync<Table>(`
         SELECT t.*,
           (SELECT COUNT(*) FROM orders o WHERE o.table_id = t.id AND o.bill_printed = 1 AND o.status = 'preparing') as pending_bills_count,
-          (SELECT o.id FROM orders o WHERE o.table_id = t.id AND o.bill_printed = 0 AND o.status IN ('pending', 'preparing') LIMIT 1) as active_order_id
+          (SELECT o.id FROM orders o WHERE o.table_id = t.id AND o.status IN ('pending', 'preparing') ORDER BY o.created_at DESC LIMIT 1) as active_order_id
         FROM tables t
         ORDER BY t.table_number
       `);
@@ -292,10 +292,13 @@ export default function TablesScreen() {
               // Delete all order items
               await db.runAsync('DELETE FROM order_items WHERE order_id = ?', [activeOrderId]);
               
+              // Delete KOT prints for this order
+              await db.runAsync('DELETE FROM kot_prints WHERE order_id = ?', [activeOrderId]);
+              
               // Delete the order
               await db.runAsync('DELETE FROM orders WHERE id = ?', [activeOrderId]);
               
-              // Check if table still has any other orders
+              // Check if table still has any other orders (including those with bill_printed = 1)
               const remainingOrders = await db.getFirstAsync<{ count: number }>(
                 `SELECT COUNT(*) as count FROM orders 
                  WHERE table_id = ? AND status IN ('pending', 'preparing')`,
@@ -303,9 +306,9 @@ export default function TablesScreen() {
               );
 
               // Update table status if no more orders
-              if (remainingOrders?.count === 0) {
+              if (!remainingOrders || remainingOrders.count === 0) {
                 await db.runAsync(
-                  'UPDATE tables SET status = ? WHERE id = ?',
+                  'UPDATE tables SET status = ?, current_order_id = NULL WHERE id = ?',
                   ['available', table.id]
                 );
               }
@@ -313,6 +316,7 @@ export default function TablesScreen() {
               await loadTables();
               Alert.alert('Success', 'Order cancelled successfully');
             } catch (error: any) {
+              console.error('Cancel order error:', error);
               Alert.alert('Error', error.message || 'Failed to cancel order');
             }
           },
