@@ -228,6 +228,59 @@ export default function TablesScreen() {
     setTransferModalVisible(true);
   };
 
+  const handleCancelOrder = (table: Table) => {
+    const activeOrderId = table.active_order_id || table.current_order_id;
+    if (!activeOrderId) {
+      Alert.alert('Error', 'No active order to cancel');
+      return;
+    }
+
+    Alert.alert(
+      'Cancel Order',
+      `Are you sure you want to cancel the order for Table ${table.table_number}? All items will be removed.`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel Order',
+          style: 'destructive',
+          onPress: async () => {
+            if (!useDBStore) return;
+            const db = useDBStore.getState().getDatabase();
+            if (!db) return;
+
+            try {
+              // Delete all order items
+              await db.runAsync('DELETE FROM order_items WHERE order_id = ?', [activeOrderId]);
+              
+              // Delete the order
+              await db.runAsync('DELETE FROM orders WHERE id = ?', [activeOrderId]);
+              
+              // Check if table still has any other orders
+              const remainingOrders = await db.getFirstAsync<{ count: number }>(
+                `SELECT COUNT(*) as count FROM orders 
+                 WHERE table_id = ? AND status IN ('pending', 'preparing')`,
+                [table.id]
+              );
+
+              // Update table status if no more orders
+              if (remainingOrders?.count === 0) {
+                await db.runAsync(
+                  'UPDATE tables SET status = ? WHERE id = ?',
+                  ['available', table.id]
+                );
+              }
+
+              await loadTables();
+              Alert.alert('Success', 'Order cancelled successfully');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to cancel order');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleTablePress = (table: Table) => {
     const options: any[] = [
       { text: 'Cancel', style: 'cancel' as const },
@@ -260,6 +313,11 @@ export default function TablesScreen() {
           text: 'Transfer Current Order',
           onPress: () => openTransferModal(table),
         });
+        options.push({
+          text: '🗑️ Cancel Current Order',
+          style: 'destructive',
+          onPress: () => handleCancelOrder(table),
+        });
       }
     } 
     // Case 2: Table has active order (no pending bills)
@@ -271,6 +329,11 @@ export default function TablesScreen() {
       options.push({
         text: 'Transfer Order',
         onPress: () => openTransferModal(table),
+      });
+      options.push({
+        text: '🗑️ Cancel Order',
+        style: 'destructive',
+        onPress: () => handleCancelOrder(table),
       });
     } 
     // Case 3: Table is completely available
