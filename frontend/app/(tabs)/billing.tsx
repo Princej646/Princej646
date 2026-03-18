@@ -768,12 +768,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   paymentInput: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    backgroundColor: '#F5F5F5',
     borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#F9F9F9',
+    padding: 16,
+    fontSize: 18,
+    color: '#1A1A1A',
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
   },
   totalPaidRow: {
     flexDirection: 'row',
