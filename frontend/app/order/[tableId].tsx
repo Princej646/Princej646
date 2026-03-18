@@ -425,81 +425,104 @@ export default function OrderScreen() {
 
       {/* Add Item Modal */}
       <Modal visible={showItemModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
-            <Text style={styles.modalSubtitle}>₹{selectedItem?.base_price.toFixed(2)}</Text>
-
-            {itemAddons.length > 0 && (
-              <View style={styles.addonsSection}>
-                <Text style={styles.addonsSectionTitle}>Add-ons</Text>
-                {itemAddons.map((addon) => (
-                  <TouchableOpacity
-                    key={addon.id}
-                    style={styles.addonOption}
-                    onPress={() => {
-                      if (selectedAddons.includes(addon.id)) {
-                        setSelectedAddons(selectedAddons.filter(id => id !== addon.id));
-                      } else {
-                        setSelectedAddons([...selectedAddons, addon.id]);
-                      }
-                    }}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.modalOverlay}>
+              <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                <View style={styles.modalContent}>
+                  <ScrollView 
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                   >
-                    <Ionicons
-                      name={selectedAddons.includes(addon.id) ? "checkbox" : "square-outline"}
-                      size={24}
-                      color="#FF6B35"
+                    <Text style={styles.modalTitle}>{selectedItem?.name}</Text>
+                    <Text style={styles.modalSubtitle}>₹{selectedItem?.base_price.toFixed(2)}</Text>
+
+                    {itemAddons.length > 0 && (
+                      <View style={styles.addonsSection}>
+                        <Text style={styles.addonsSectionTitle}>Add-ons</Text>
+                        {itemAddons.map((addon) => (
+                          <TouchableOpacity
+                            key={addon.id}
+                            style={styles.addonOption}
+                            onPress={() => {
+                              if (selectedAddons.includes(addon.id)) {
+                                setSelectedAddons(selectedAddons.filter(id => id !== addon.id));
+                              } else {
+                                setSelectedAddons([...selectedAddons, addon.id]);
+                              }
+                            }}
+                          >
+                            <Ionicons
+                              name={selectedAddons.includes(addon.id) ? "checkbox" : "square-outline"}
+                              size={24}
+                              color="#FF6B35"
+                            />
+                            <Text style={styles.addonOptionText}>{addon.addon_name}</Text>
+                            <Text style={styles.addonOptionPrice}>+₹{addon.price.toFixed(2)}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+
+                    <View style={styles.quantitySection}>
+                      <Text style={styles.quantitySectionTitle}>Quantity</Text>
+                      <View style={styles.quantityControls}>
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
+                        >
+                          <Ionicons name="remove" size={24} color="#FFF" />
+                        </TouchableOpacity>
+                        <Text style={styles.quantityValue}>{itemQuantity}</Text>
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => setItemQuantity(itemQuantity + 1)}
+                        >
+                          <Ionicons name="add" size={24} color="#FFF" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <TextInput
+                      style={styles.notesInput}
+                      placeholder="Special instructions (optional)"
+                      value={itemNotes}
+                      onChangeText={setItemNotes}
+                      multiline
+                      returnKeyType="done"
+                      blurOnSubmit={true}
+                      onSubmitEditing={Keyboard.dismiss}
                     />
-                    <Text style={styles.addonOptionText}>{addon.addon_name}</Text>
-                    <Text style={styles.addonOptionPrice}>+₹{addon.price.toFixed(2)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
 
-            <View style={styles.quantitySection}>
-              <Text style={styles.quantitySectionTitle}>Quantity</Text>
-              <View style={styles.quantityControls}>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => setItemQuantity(Math.max(1, itemQuantity - 1))}
-                >
-                  <Ionicons name="remove" size={24} color="#FFF" />
-                </TouchableOpacity>
-                <Text style={styles.quantityValue}>{itemQuantity}</Text>
-                <TouchableOpacity
-                  style={styles.quantityButton}
-                  onPress={() => setItemQuantity(itemQuantity + 1)}
-                >
-                  <Ionicons name="add" size={24} color="#FFF" />
-                </TouchableOpacity>
-              </View>
+                    <View style={styles.modalButtons}>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.cancelButton]}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setShowItemModal(false);
+                        }}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.modalButton, styles.confirmButton]}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          handleConfirmAddItem();
+                        }}
+                      >
+                        <Text style={styles.confirmButtonText}>Add to Order</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
             </View>
-
-            <TextInput
-              style={styles.notesInput}
-              placeholder="Special instructions (optional)"
-              value={itemNotes}
-              onChangeText={setItemNotes}
-              multiline
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setShowItemModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleConfirmAddItem}
-              >
-                <Text style={styles.confirmButtonText}>Add to Order</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
