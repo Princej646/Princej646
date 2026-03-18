@@ -355,11 +355,24 @@ export default function BillingScreen() {
 
             <TouchableOpacity
               style={styles.generateButton}
-              onPress={handleGenerateBill}
+              onPress={handlePrintBill}
+              disabled={billPrinted}
             >
-              <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-              <Text style={styles.generateButtonText}>Generate Bill</Text>
+              <Ionicons name="print" size={24} color="#FFF" />
+              <Text style={styles.generateButtonText}>
+                {billPrinted ? 'Bill Printed ✓' : 'Print Bill'}
+              </Text>
             </TouchableOpacity>
+
+            {billPrinted && (
+              <TouchableOpacity
+                style={[styles.generateButton, styles.settleButton]}
+                onPress={handleSettleBillPrompt}
+              >
+                <Ionicons name="checkmark-done" size={24} color="#FFF" />
+                <Text style={styles.generateButtonText}>Settle Bill & Payment</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       )}
