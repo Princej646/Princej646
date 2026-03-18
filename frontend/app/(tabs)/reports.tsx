@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-gifted-charts';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '../../store/authStore';
 
 let useDBStore: any = null;
 if (Platform.OS !== 'web') {
@@ -32,6 +34,8 @@ interface ItemSale {
 }
 
 export default function ReportsScreen() {
+  const router = useRouter();
+  const currentUser = useAuthStore((state) => state.user);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [selectedView, setSelectedView] = useState<'analytics' | 'bills'>('analytics');
@@ -41,10 +45,21 @@ export default function ReportsScreen() {
   const [bills, setBills] = useState<any[]>([]);
 
   useEffect(() => {
+    // Access guard - only admin can view reports
+    if (currentUser?.role !== 'admin') {
+      Alert.alert('Access Denied', 'Only admin users can access reports', [
+        {
+          text: 'OK',
+          onPress: () => router.replace('/(tabs)'),
+        },
+      ]);
+      return;
+    }
+
     if (Platform.OS !== 'web') {
       loadReports();
     }
-  }, [selectedPeriod]);
+  }, [selectedPeriod, currentUser]);
 
   const loadReports = async () => {
     if (!useDBStore) return;
