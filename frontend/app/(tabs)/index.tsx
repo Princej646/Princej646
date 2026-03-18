@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { usePathname } from 'expo-router';
 
 let useDBStore: any = null;
 
@@ -58,14 +58,17 @@ export default function HomeScreen() {
     }
   }, [user]);
 
-  // Refresh data when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
+  // Use pathname to detect when screen is focused
+  const pathname = usePathname();
+  
+  useEffect(() => {
+    // Reload stats when we navigate to this tab
+    if (pathname === '/' || pathname === '/index' || pathname === '/(tabs)' || pathname === '/(tabs)/index') {
       if (Platform.OS !== 'web' && useDBStore) {
         loadStats();
       }
-    }, [])
-  );
+    }
+  }, [pathname]);
 
   const loadStats = async () => {
     if (Platform.OS === 'web' || !useDBStore) return;

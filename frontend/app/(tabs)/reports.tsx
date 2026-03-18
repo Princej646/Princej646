@@ -12,9 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-gifted-charts';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
-import { useFocusEffect } from '@react-navigation/native';
 
 let useDBStore: any = null;
 if (Platform.OS !== 'web') {
@@ -62,14 +61,16 @@ export default function ReportsScreen() {
     }
   }, [selectedPeriod, currentUser]);
 
-  // Refresh data when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
+  // Refresh data when pathname changes (screen comes into focus)
+  const pathname = usePathname();
+  
+  useEffect(() => {
+    if (pathname === '/reports' || pathname === '/(tabs)/reports') {
       if (Platform.OS !== 'web' && currentUser?.role === 'admin') {
         loadReports();
       }
-    }, [selectedPeriod])
-  );
+    }
+  }, [pathname, selectedPeriod]);
 
   const loadReports = async () => {
     if (!useDBStore) return;
@@ -192,29 +193,35 @@ export default function ReportsScreen() {
                 try {
                   orderIds = JSON.parse(bill.order_ids_json);
                 } catch {
-                  orderIds = [bill.order_id];
+                  orderIds = bill.order_id ? [bill.order_id] : [];
                 }
-              } else {
+              } else if (bill.order_id) {
                 orderIds = [bill.order_id];
               }
 
+              // Delete the bill FIRST (removes foreign key reference)
+              await db.runAsync('DELETE FROM bills WHERE id = ?', [billId]);
+
               // Delete order items for all orders
               for (const orderId of orderIds) {
-                await db.runAsync('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+                if (orderId) {
+                  await db.runAsync('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+                }
               }
 
               // Delete KOT prints for all orders
               for (const orderId of orderIds) {
-                await db.runAsync('DELETE FROM kot_prints WHERE order_id = ?', [orderId]);
+                if (orderId) {
+                  await db.runAsync('DELETE FROM kot_prints WHERE order_id = ?', [orderId]);
+                }
               }
 
               // Delete all orders
               for (const orderId of orderIds) {
-                await db.runAsync('DELETE FROM orders WHERE id = ?', [orderId]);
+                if (orderId) {
+                  await db.runAsync('DELETE FROM orders WHERE id = ?', [orderId]);
+                }
               }
-
-              // Delete the bill
-              await db.runAsync('DELETE FROM bills WHERE id = ?', [billId]);
 
               // Check if table still has any orders, if not make it available
               const tableOrders = await db.getFirstAsync<{ count: number }>(

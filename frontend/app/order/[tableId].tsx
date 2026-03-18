@@ -15,9 +15,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, usePathname } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
-import { useFocusEffect } from '@react-navigation/native';
 
 let useDBStore: any = null;
 let bluetoothPrinter: any = null;
@@ -86,14 +85,14 @@ export default function OrderScreen() {
     }
   }, [selectedCategory]);
 
-  // Refresh data when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== 'web') {
-        loadTableAndOrder();
-      }
-    }, [tableId])
-  );
+  // Refresh data when pathname indicates we're on this screen
+  const pathname = usePathname();
+  
+  useEffect(() => {
+    if (pathname?.includes('/order/') && Platform.OS !== 'web') {
+      loadTableAndOrder();
+    }
+  }, [pathname, tableId]);
 
   const loadTableAndOrder = async () => {
     if (!useDBStore) return;
