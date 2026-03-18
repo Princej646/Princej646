@@ -1,25 +1,27 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Swadish Veg POS",
+    "slug": "swadish-veg-pos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "swadishpos",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.swadishveg.pos",
       "infoPlist": {
         "NSCameraUsageDescription": "Capture menu item photos",
         "NSPhotoLibraryUsageDescription": "Select menu item images from gallery",
-        "NSBluetoothAlwaysUsageDescription": "Connect to thermal printers for KOT printing"
+        "NSBluetoothAlwaysUsageDescription": "Connect to thermal printers for KOT printing",
+        "NSBluetoothPeripheralUsageDescription": "Connect to Bluetooth thermal printers"
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000"
+        "backgroundColor": "#FFD700"
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
@@ -30,15 +32,9 @@
         "BLUETOOTH_ADMIN",
         "BLUETOOTH_CONNECT",
         "BLUETOOTH_SCAN",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "BLUETOOTH",
-        "BLUETOOTH_ADMIN",
-        "BLUETOOTH_CONNECT",
-        "BLUETOOTH_SCAN"
+        "ACCESS_FINE_LOCATION"
       ],
-      "package": "com.anonymous.frontend"
+      "package": "com.swadishveg.pos"
     },
     "web": {
       "bundler": "metro",
@@ -53,11 +49,19 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000"
+          "backgroundColor": "#FFD700"
         }
       ],
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": ["peripheral", "central"],
+          "bluetoothAlwaysPermission": "Connect to thermal printers for KOT printing"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
