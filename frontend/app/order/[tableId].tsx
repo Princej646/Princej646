@@ -19,8 +19,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 
 let useDBStore: any = null;
+let bluetoothPrinter: any = null;
 if (Platform.OS !== 'web') {
   useDBStore = require('../../store/dbStore').useDBStore;
+  bluetoothPrinter = require('../../utils/bluetoothPrinter').bluetoothPrinter;
 }
 
 interface Category {
@@ -294,7 +296,36 @@ export default function OrderScreen() {
                 [kotId, order.id, table?.table_number, JSON.stringify(orderItems), user?.username]
               );
 
-              Alert.alert('Success', 'Order sent to kitchen! KOT will be printed.');
+              // Try to print KOT via Bluetooth printer
+              if (bluetoothPrinter && bluetoothPrinter.isConnected()) {
+                try {
+                  const printItems = orderItems.map(item => {
+                    const addons = item.addons_json ? JSON.parse(item.addons_json) : [];
+                    return {
+                      name: item.item_name,
+                      quantity: item.quantity,
+                      notes: item.notes || undefined,
+                      addons: addons.length > 0 ? addons.map((a: any) => a.name) : undefined,
+                    };
+                  });
+
+                  await bluetoothPrinter.printKOT({
+                    tableNumber: table?.table_number || 'Unknown',
+                    orderId: order.id,
+                    items: printItems,
+                    timestamp: new Date().toLocaleString(),
+                    printedBy: user?.username || 'Unknown',
+                  });
+
+                  Alert.alert('Success', 'Order sent to kitchen! KOT printed.');
+                } catch (printError) {
+                  console.error('KOT print error:', printError);
+                  Alert.alert('Success', 'Order sent to kitchen! (Printer not available)');
+                }
+              } else {
+                Alert.alert('Success', 'Order sent to kitchen! (Connect printer in Settings)');
+              }
+              
               router.back();
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to submit order');

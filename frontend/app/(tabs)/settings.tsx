@@ -57,20 +57,14 @@ export default function SettingsScreen() {
     {
       icon: 'print',
       label: 'Bluetooth Printer',
-      value: 'Configure',
-      onPress: () => Alert.alert('Coming Soon', 'Bluetooth printer setup will be available soon'),
+      value: 'Configure KOT Printer',
+      onPress: () => router.push('/printer' as any),
     },
     {
       icon: 'cloud-upload',
-      label: 'Backup Data',
-      value: 'Create Backup',
-      onPress: () => Alert.alert('Coming Soon', 'Backup feature will be available soon'),
-    },
-    {
-      icon: 'cloud-download',
-      label: 'Restore Data',
-      value: 'Restore Backup',
-      onPress: () => Alert.alert('Coming Soon', 'Restore feature will be available soon'),
+      label: 'Backup & Restore',
+      value: 'Manage Backups',
+      onPress: () => router.push('/backup' as any),
     },
   ];
 
