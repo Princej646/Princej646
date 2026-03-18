@@ -33,8 +33,13 @@ export default function TablesScreen() {
   const [tables, setTables] = useState<Table[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [transferModalVisible, setTransferModalVisible] = useState(false);
   const [newTableNumber, setNewTableNumber] = useState('');
   const [newTableSeats, setNewTableSeats] = useState('4');
+  const [editingTable, setEditingTable] = useState<Table | null>(null);
+  const [transferFromTable, setTransferFromTable] = useState<Table | null>(null);
+  const [transferToTableId, setTransferToTableId] = useState<string>('');
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
