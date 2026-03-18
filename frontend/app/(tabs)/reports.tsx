@@ -33,9 +33,11 @@ interface ItemSale {
 export default function ReportsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [selectedView, setSelectedView] = useState<'analytics' | 'bills'>('analytics');
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [topItems, setTopItems] = useState<ItemSale[]>([]);
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [bills, setBills] = useState<any[]>([]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
