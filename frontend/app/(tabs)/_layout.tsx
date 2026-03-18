@@ -60,7 +60,7 @@ export default function TabsLayout() {
         />
       )}
 
-      {(role === 'cashier' || role === 'admin') && (
+      {(role === 'cashier' || role === 'admin' || role === 'captain') && (
         <Tabs.Screen
           name="billing"
           options={{
