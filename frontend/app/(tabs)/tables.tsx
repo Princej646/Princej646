@@ -225,32 +225,48 @@ export default function TablesScreen() {
     const hasActiveOrder = table.active_order_id || table.current_order_id;
     const hasPendingBills = (table.pending_bills_count || 0) > 0;
 
-    // Always allow taking/viewing orders
-    if (!hasActiveOrder) {
+    // Case 1: Table has pending bills (previous customer not settled)
+    if (hasPendingBills) {
+      // Option to start fresh order for new customer
       options.push({
-        text: 'Take Order',
+        text: '👤 New Customer',
         onPress: () => router.push(`/order/${table.id}`),
       });
-    } else {
+      
+      // Option to view/settle pending bills
+      options.push({
+        text: '📋 View Pending Bills',
+        onPress: () => router.push('/(tabs)/billing'),
+      });
+      
+      // If also has active order, show option to view it
+      if (hasActiveOrder) {
+        options.push({
+          text: '📝 View Current Order',
+          onPress: () => router.push(`/order/${table.id}`),
+        });
+        options.push({
+          text: 'Transfer Current Order',
+          onPress: () => openTransferModal(table),
+        });
+      }
+    } 
+    // Case 2: Table has active order (no pending bills)
+    else if (hasActiveOrder) {
       options.push({
         text: 'View/Edit Order',
         onPress: () => router.push(`/order/${table.id}`),
       });
-    }
-
-    // If there are pending bills, show option to add new order
-    if (hasPendingBills && !hasActiveOrder) {
-      options.push({
-        text: 'Add New Order',
-        onPress: () => router.push(`/order/${table.id}`),
-      });
-    }
-
-    // Transfer only if there's an active order (not yet billed)
-    if (hasActiveOrder) {
       options.push({
         text: 'Transfer Order',
         onPress: () => openTransferModal(table),
+      });
+    } 
+    // Case 3: Table is completely available
+    else {
+      options.push({
+        text: 'Take Order',
+        onPress: () => router.push(`/order/${table.id}`),
       });
     }
 
@@ -263,14 +279,16 @@ export default function TablesScreen() {
     }
 
     // Build status text
-    let statusText = `Status: ${table.status}`;
+    let statusText = `Seats: ${table.seats}`;
     if (hasPendingBills) {
-      statusText += `\nPending Bills: ${table.pending_bills_count}`;
+      statusText += `\n⏳ ${table.pending_bills_count} pending bill${(table.pending_bills_count || 0) > 1 ? 's' : ''} (old customer)`;
     }
     if (hasActiveOrder) {
-      statusText += `\nActive Order: Yes`;
+      statusText += `\n✏️ Active order in progress`;
     }
-    statusText += `\nSeats: ${table.seats}`;
+    if (!hasPendingBills && !hasActiveOrder) {
+      statusText += `\n✅ Available`;
+    }
 
     Alert.alert(
       `Table ${table.table_number}`,
@@ -354,11 +372,19 @@ export default function TablesScreen() {
               <Ionicons name="person" size={16} color="#666" />
               <Text style={styles.seatsText}>{table.seats} seats</Text>
             </View>
+            {/* Show active order indicator */}
+            {(table.active_order_id || table.current_order_id) && (
+              <View style={styles.activeOrderBadge}>
+                <Ionicons name="create" size={14} color="#FF6B35" />
+                <Text style={styles.activeOrderText}>Order in progress</Text>
+              </View>
+            )}
+            {/* Show pending bills indicator */}
             {(table.pending_bills_count || 0) > 0 && (
               <View style={styles.pendingBillsBadge}>
-                <Ionicons name="receipt" size={14} color="#FF9800" />
+                <Ionicons name="time" size={14} color="#FF9800" />
                 <Text style={styles.pendingBillsText}>
-                  {table.pending_bills_count} bill{(table.pending_bills_count || 0) > 1 ? 's' : ''} pending
+                  {table.pending_bills_count} bill{(table.pending_bills_count || 0) > 1 ? 's' : ''} unsettled
                 </Text>
               </View>
             )}
@@ -631,11 +657,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  pendingBillsBadge: {
+  activeOrderBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFF0EB',
+    borderRadius: 4,
+  },
+  activeOrderText: {
+    fontSize: 12,
+    color: '#FF6B35',
+    fontWeight: '600',
+  },
+  pendingBillsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
     backgroundColor: '#FFF3E0',
