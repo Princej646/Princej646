@@ -33,10 +33,18 @@ export default function PrinterScreen() {
   const [devices, setDevices] = useState<PrinterDevice[]>([]);
   const [connectedDevice, setConnectedDevice] = useState<PrinterDevice | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [bleAvailable, setBleAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (Platform.OS !== 'web' && bluetoothPrinter) {
-      checkConnection();
+      // Check if BLE is available (requires development build)
+      const available = bluetoothPrinter.isBleAvailable();
+      setBleAvailable(available);
+      if (available) {
+        checkConnection();
+      }
+    } else {
+      setBleAvailable(false);
     }
     
     return () => {
@@ -156,6 +164,35 @@ export default function PrinterScreen() {
         <View style={styles.webNotice}>
           <Ionicons name="print" size={64} color="#E0E0E0" />
           <Text style={styles.webNoticeText}>Printer setup is only available on mobile devices</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show message when BLE is not available (Expo Go)
+  if (bleAvailable === false) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#1A1A1A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Bluetooth Printer</Text>
+        </View>
+        <View style={styles.webNotice}>
+          <Ionicons name="build" size={64} color="#FF9800" />
+          <Text style={styles.devBuildTitle}>Development Build Required</Text>
+          <Text style={styles.webNoticeText}>
+            Bluetooth printing requires a development build and is not supported in Expo Go.
+          </Text>
+          <View style={styles.devBuildInfo}>
+            <Text style={styles.devBuildStep}>To enable Bluetooth printing:</Text>
+            <Text style={styles.devBuildStep}>1. Run: npx expo prebuild</Text>
+            <Text style={styles.devBuildStep}>2. Build with: npx expo run:ios or npx expo run:android</Text>
+          </View>
+          <TouchableOpacity style={styles.backButtonLarge} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -536,5 +573,38 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
     marginTop: 16,
+    lineHeight: 24,
+  },
+  devBuildTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FF9800',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  devBuildInfo: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 24,
+    width: '100%',
+  },
+  devBuildStep: {
+    fontSize: 14,
+    color: '#E65100',
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  backButtonLarge: {
+    backgroundColor: '#FF6B35',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    marginTop: 24,
+  },
+  backButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

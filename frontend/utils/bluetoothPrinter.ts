@@ -1,10 +1,8 @@
 import { Platform, PermissionsAndroid } from 'react-native';
-import { BleManager, Device, State } from 'react-native-ble-plx';
 import { buildKOTPrintData } from './escpos';
 import * as SecureStore from 'expo-secure-store';
 
-const PRINTER_SERVICE_UUID = '000018f0-0000-1000-8000-00805f9b34fb';
-const PRINTER_CHARACTERISTIC_UUID = '00002af1-0000-1000-8000-00805f9b34fb';
+const SAVED_PRINTER_KEY = 'saved_printer_id';
 
 // Alternative UUIDs for different printer brands
 const PRINTER_UUIDS = [
@@ -13,20 +11,76 @@ const PRINTER_UUIDS = [
   { service: 'e7810a71-73ae-499d-8c15-faa9aef0c3f2', characteristic: 'bef8d6c9-9c21-4c9e-b632-bd58c1009f9f' },
 ];
 
-const SAVED_PRINTER_KEY = 'saved_printer_id';
+// Device interface for typing
+export interface PrinterDevice {
+  id: string;
+  name: string | null;
+}
 
 class BluetoothPrinterService {
-  private manager: BleManager | null = null;
-  private connectedDevice: Device | null = null;
+  private manager: any = null;
+  private connectedDevice: any = null;
   private isScanning: boolean = false;
+  private bleAvailable: boolean = false;
+  private bleChecked: boolean = false;
+  private BleManager: any = null;
+  private State: any = null;
 
   constructor() {
-    if (Platform.OS !== 'web') {
-      this.manager = new BleManager();
+    // Don't initialize BLE in constructor - do it lazily
+    this.bleAvailable = false;
+    this.bleChecked = false;
+  }
+
+  private loadBleModule(): boolean {
+    if (this.bleChecked) {
+      return this.bleAvailable;
+    }
+
+    this.bleChecked = true;
+
+    if (Platform.OS === 'web') {
+      this.bleAvailable = false;
+      return false;
+    }
+
+    try {
+      const bleModule = require('react-native-ble-plx');
+      this.BleManager = bleModule.BleManager;
+      this.State = bleModule.State;
+      this.bleAvailable = true;
+      return true;
+    } catch (error) {
+      console.log('BLE module not available (requires development build, not supported in Expo Go)');
+      this.bleAvailable = false;
+      return false;
     }
   }
 
+  private initBle(): boolean {
+    if (this.manager) return true;
+    
+    if (!this.loadBleModule()) {
+      return false;
+    }
+
+    try {
+      this.manager = new this.BleManager();
+      return true;
+    } catch (error) {
+      console.log('Failed to initialize BleManager:', error);
+      this.bleAvailable = false;
+      return false;
+    }
+  }
+
+  isBleAvailable(): boolean {
+    return this.loadBleModule();
+  }
+
   async requestPermissions(): Promise<boolean> {
+    if (!this.isBleAvailable()) return false;
+    
     if (Platform.OS === 'android') {
       try {
         const granted = await PermissionsAndroid.requestMultiple([
@@ -47,11 +101,11 @@ class BluetoothPrinterService {
   }
 
   async checkBluetoothState(): Promise<boolean> {
-    if (!this.manager) return false;
+    if (!this.initBle() || !this.manager) return false;
     
     try {
       const state = await this.manager.state();
-      return state === State.PoweredOn;
+      return state === this.State?.PoweredOn;
     } catch (error) {
       console.error('Bluetooth state check error:', error);
       return false;
@@ -59,10 +113,14 @@ class BluetoothPrinterService {
   }
 
   async scanForPrinters(
-    onDeviceFound: (device: Device) => void,
+    onDeviceFound: (device: PrinterDevice) => void,
     duration: number = 10000
   ): Promise<void> {
-    if (!this.manager || this.isScanning) return;
+    if (!this.initBle() || !this.manager) {
+      throw new Error('Bluetooth not available. Requires development build.');
+    }
+    
+    if (this.isScanning) return;
 
     const hasPermission = await this.requestPermissions();
     if (!hasPermission) {
@@ -86,7 +144,7 @@ class BluetoothPrinterService {
       this.manager!.startDeviceScan(
         null,
         { allowDuplicates: false },
-        (error, device) => {
+        (error: any, device: any) => {
           if (error) {
             clearTimeout(timeout);
             this.isScanning = false;
@@ -105,7 +163,7 @@ class BluetoothPrinterService {
               deviceName.includes('receipt')
             ) {
               foundDevices.add(device.id);
-              onDeviceFound(device);
+              onDeviceFound({ id: device.id, name: device.name });
             }
           }
         }
@@ -120,8 +178,8 @@ class BluetoothPrinterService {
     }
   }
 
-  async connectToPrinter(deviceId: string): Promise<Device> {
-    if (!this.manager) {
+  async connectToPrinter(deviceId: string): Promise<PrinterDevice> {
+    if (!this.initBle() || !this.manager) {
       throw new Error('Bluetooth not available');
     }
 
@@ -141,7 +199,7 @@ class BluetoothPrinterService {
       // Save device ID for auto-reconnect
       await SecureStore.setItemAsync(SAVED_PRINTER_KEY, deviceId);
 
-      return device;
+      return { id: device.id, name: device.name };
     } catch (error) {
       console.error('Connection error:', error);
       throw error;
@@ -167,7 +225,9 @@ class BluetoothPrinterService {
     }
   }
 
-  async autoConnectToSavedPrinter(): Promise<Device | null> {
+  async autoConnectToSavedPrinter(): Promise<PrinterDevice | null> {
+    if (!this.isBleAvailable()) return null;
+    
     const savedId = await this.getSavedPrinterId();
     if (savedId) {
       try {
@@ -184,8 +244,12 @@ class BluetoothPrinterService {
     return this.connectedDevice !== null;
   }
 
-  getConnectedDevice(): Device | null {
-    return this.connectedDevice;
+  getConnectedDevice(): PrinterDevice | null {
+    if (!this.connectedDevice) return null;
+    return {
+      id: this.connectedDevice.id,
+      name: this.connectedDevice.name,
+    };
   }
 
   async printData(data: number[]): Promise<void> {
@@ -265,4 +329,3 @@ class BluetoothPrinterService {
 }
 
 export const bluetoothPrinter = new BluetoothPrinterService();
-export type { Device };
