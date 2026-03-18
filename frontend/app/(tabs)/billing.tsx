@@ -95,7 +95,26 @@ export default function BillingScreen() {
     return { baseAmount, cgst, sgst, totalGST };
   };
 
-  const generateBill = async (paymentMethod: string) => {
+  const handlePrintBill = () => {
+    Alert.alert(
+      'Print Bill',
+      'Bill will be printed. Proceed to settle payment after customer pays.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Print',
+          onPress: () => {
+            // Here you would integrate with actual printer
+            // For now, just mark as printed
+            setBillPrinted(true);
+            Alert.alert('Success', 'Bill printed successfully. Now settle the payment.');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSettleBill = (paymentMethod: string) => {
     if (!useDBStore || !selectedOrder) return;
     const db = useDBStore.getState().getDatabase();
     if (!db) return;
@@ -106,56 +125,69 @@ export default function BillingScreen() {
       return;
     }
 
-    try {
-      const total = calculateSubtotal(); // This is the total WITH GST (inclusive)
-      const gst = calculateGST(total);
+    Alert.alert(
+      'Settle Bill',
+      `Customer paid via ${paymentMethod}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Payment',
+          onPress: async () => {
+            try {
+              const total = calculateSubtotal(); // This is the total WITH GST (inclusive)
+              const gst = calculateGST(total);
 
-      const billId = `bill_${Date.now()}`;
-      await db.runAsync(`
-        INSERT INTO bills (
-          id, order_id, table_number, subtotal, cgst, sgst, total, 
-          payment_method, billed_by_user_id, billed_by_username
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        billId,
-        selectedOrder.id,
-        selectedOrder.table_number,
-        gst.baseAmount, // Base amount without GST
-        gst.cgst,
-        gst.sgst,
-        total, // Total includes GST
-        paymentMethod,
-        user.id,
-        user.username,
-      ]);
+              const billId = `bill_${Date.now()}`;
+              await db.runAsync(`
+                INSERT INTO bills (
+                  id, order_id, table_number, subtotal, cgst, sgst, total, 
+                  payment_method, billed_by_user_id, billed_by_username
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `, [
+                billId,
+                selectedOrder.id,
+                selectedOrder.table_number,
+                gst.baseAmount, // Base amount without GST
+                gst.cgst,
+                gst.sgst,
+                total, // Total includes GST
+                paymentMethod,
+                user.id,
+                user.username,
+              ]);
 
-      await db.runAsync(
-        'UPDATE orders SET status = ? WHERE id = ?',
-        ['completed', selectedOrder.id]
-      );
+              await db.runAsync(
+                'UPDATE orders SET status = ? WHERE id = ?',
+                ['completed', selectedOrder.id]
+              );
 
-      await db.runAsync(
-        'UPDATE tables SET status = ?, current_order_id = NULL WHERE id = ?',
-        ['available', selectedOrder.table_id]
-      );
+              await db.runAsync(
+                'UPDATE tables SET status = ?, current_order_id = NULL WHERE id = ?',
+                ['available', selectedOrder.table_id]
+              );
 
-      Alert.alert(
-        'Success',
-        `Bill generated successfully!\nTotal: ₹${total.toFixed(2)}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setSelectedOrder(null);
-              setOrderItems([]);
-              loadReadyOrders();
-            },
+              Alert.alert(
+                'Success',
+                `Payment settled! Total: ₹${total.toFixed(2)}`,
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      setSelectedOrder(null);
+                      setOrderItems([]);
+                      setBillPrinted(false);
+                      loadReadyOrders();
+                    },
+                  },
+                ]
+              );
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to settle bill');
+            }
           },
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to generate bill');
-    }
+        },
+      ]
+    );
   };
 
   const handleGenerateBill = () => {
