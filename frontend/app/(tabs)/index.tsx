@@ -115,7 +115,7 @@ export default function HomeScreen() {
       label: 'Generate Bill',
       color: '#4ECDC4',
       route: '/billing',
-      roles: ['cashier', 'admin'],
+      roles: ['cashier', 'admin', 'captain'],
     },
     {
       icon: 'restaurant',
