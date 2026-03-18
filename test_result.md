@@ -158,13 +158,16 @@ frontend:
     implemented: true
     working: true
     file: "/app/frontend/app/(tabs)/tables.tsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
+      - working: false
+        agent: "user"
+        comment: "User reported: Unable to add table to table management"
       - working: true
         agent: "main"
-        comment: "Grid view of tables with status indicators (available/occupied), add table functionality, table selection to start orders. Dynamic routing to order screen."
+        comment: "Fixed: useDBStore was not being initialized properly. Changed from async dynamic import to synchronous require. The initDBStore function was defined but never called, causing the database to be null when trying to add tables. Now using direct require with platform check."
 
   - task: "Order Taking (Captain Interface)"
     implemented: true
