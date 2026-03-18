@@ -106,9 +106,8 @@ export default function BillingScreen() {
     }
 
     try {
-      const subtotal = calculateSubtotal();
-      const gst = calculateGST(subtotal);
-      const total = subtotal + gst.total;
+      const total = calculateSubtotal(); // This is the total WITH GST (inclusive)
+      const gst = calculateGST(total);
 
       const billId = `bill_${Date.now()}`;
       await db.runAsync(`
@@ -120,10 +119,10 @@ export default function BillingScreen() {
         billId,
         selectedOrder.id,
         selectedOrder.table_number,
-        subtotal,
+        gst.baseAmount, // Base amount without GST
         gst.cgst,
         gst.sgst,
-        total,
+        total, // Total includes GST
         paymentMethod,
         user.id,
         user.username,
