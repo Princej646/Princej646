@@ -96,6 +96,100 @@ export default function TablesScreen() {
     }
   };
 
+  const handleEditTable = async () => {
+    if (Platform.OS === 'web' || !useDBStore || !editingTable) {
+      Alert.alert('Error', 'Invalid operation');
+      return;
+    }
+
+    const db = useDBStore.getState().getDatabase();
+    if (!db || !newTableNumber.trim()) {
+      Alert.alert('Error', 'Please enter table number');
+      return;
+    }
+
+    try {
+      await db.runAsync(
+        'UPDATE tables SET table_number = ?, seats = ? WHERE id = ?',
+        [newTableNumber, parseInt(newTableSeats) || 4, editingTable.id]
+      );
+      setEditModalVisible(false);
+      setEditingTable(null);
+      setNewTableNumber('');
+      setNewTableSeats('4');
+      await loadTables();
+      Alert.alert('Success', 'Table updated successfully');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update table');
+    }
+  };
+
+  const handleTransferOrder = async () => {
+    if (Platform.OS === 'web' || !useDBStore || !transferFromTable || !transferToTableId) {
+      Alert.alert('Error', 'Please select a table to transfer to');
+      return;
+    }
+
+    const db = useDBStore.getState().getDatabase();
+    if (!db) return;
+
+    const toTable = tables.find(t => t.id === transferToTableId);
+    if (!toTable) {
+      Alert.alert('Error', 'Target table not found');
+      return;
+    }
+
+    if (toTable.status !== 'available') {
+      Alert.alert('Error', 'Target table is not available');
+      return;
+    }
+
+    try {
+      // Update the order's table_id
+      await db.runAsync(
+        'UPDATE orders SET table_id = ? WHERE id = ?',
+        [transferToTableId, transferFromTable.current_order_id]
+      );
+
+      // Update the old table
+      await db.runAsync(
+        'UPDATE tables SET status = ?, current_order_id = NULL WHERE id = ?',
+        ['available', transferFromTable.id]
+      );
+
+      // Update the new table
+      await db.runAsync(
+        'UPDATE tables SET status = ?, current_order_id = ? WHERE id = ?',
+        ['occupied', transferFromTable.current_order_id, transferToTableId]
+      );
+
+      setTransferModalVisible(false);
+      setTransferFromTable(null);
+      setTransferToTableId('');
+      await loadTables();
+      Alert.alert('Success', `Order transferred to Table ${toTable.table_number}`);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to transfer order');
+    }
+  };
+
+  const openEditTable = (table: Table) => {
+    setEditingTable(table);
+    setNewTableNumber(table.table_number);
+    setNewTableSeats(table.seats.toString());
+    setEditModalVisible(true);
+  };
+
+  const openTransferModal = (table: Table) => {
+    if (table.status !== 'occupied' || !table.current_order_id) {
+      Alert.alert('Error', 'This table has no active order to transfer');
+      return;
+    }
+    setTransferFromTable(table);
+    setTransferToTableId('');
+    setTransferModalVisible(true);
+  };
+
   const handleTablePress = (table: Table) => {
     if (table.status === 'available') {
       Alert.alert(
