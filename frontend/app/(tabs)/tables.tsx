@@ -191,31 +191,36 @@ export default function TablesScreen() {
   };
 
   const handleTablePress = (table: Table) => {
+    const options = [
+      { text: 'Cancel', style: 'cancel' as const },
+    ];
+
     if (table.status === 'available') {
-      Alert.alert(
-        `Table ${table.table_number}`,
-        'What would you like to do?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Take Order',
-            onPress: () => router.push(`/order/${table.id}`),
-          },
-        ]
-      );
+      options.push({
+        text: 'Take Order',
+        onPress: () => router.push(`/order/${table.id}`),
+      } as any);
     } else {
-      Alert.alert(
-        `Table ${table.table_number}`,
-        'Table is currently occupied',
-        [
-          { text: 'OK', style: 'cancel' },
-          {
-            text: 'View Order',
-            onPress: () => router.push(`/order/${table.id}`),
-          },
-        ]
-      );
+      options.push({
+        text: 'View Order',
+        onPress: () => router.push(`/order/${table.id}`),
+      } as any);
+      options.push({
+        text: 'Transfer Order',
+        onPress: () => openTransferModal(table),
+      } as any);
     }
+
+    options.push({
+      text: 'Edit Table',
+      onPress: () => openEditTable(table),
+    } as any);
+
+    Alert.alert(
+      `Table ${table.table_number}`,
+      `Status: ${table.status}\nSeats: ${table.seats}`,
+      options
+    );
   };
 
   const getTableColor = (status: string) => {
