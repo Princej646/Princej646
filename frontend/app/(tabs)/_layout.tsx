@@ -81,8 +81,7 @@ export default function TabsLayout() {
               <Ionicons name="stats-chart" size={size} color={color} />
             ),
           }}
-        />
-      )}
+        />\n      )}
 
       <Tabs.Screen
         name="settings"
