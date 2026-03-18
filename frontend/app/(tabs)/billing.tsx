@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   partPaymentInputs: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   paymentInputGroup: {
     marginBottom: 16,
