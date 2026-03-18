@@ -68,21 +68,24 @@ export default function HomeScreen() {
       const occupied = tables.filter((t: any) => t.status === 'occupied').length;
 
       const today = new Date().toISOString().split('T')[0];
-      const orders = await db.getAllAsync(
-        `SELECT * FROM orders WHERE DATE(created_at) = ?`,
+      
+      // Count today's completed orders (those that have been billed)
+      const ordersResult = await db.getFirstAsync(
+        `SELECT COUNT(*) as count FROM orders WHERE DATE(created_at) = ? AND status = 'completed'`,
         [today]
       );
 
-      const bills = await db.getAllAsync(
-        `SELECT SUM(total) as revenue FROM bills WHERE DATE(billed_at) = ?`,
+      // Get today's revenue from bills
+      const billsResult = await db.getFirstAsync(
+        `SELECT SUM(total) as revenue, COUNT(*) as count FROM bills WHERE DATE(billed_at) = ?`,
         [today]
       );
 
       setStats({
         totalTables: tables.length,
         occupiedTables: occupied,
-        todayOrders: orders.length,
-        todayRevenue: bills[0]?.revenue || 0,
+        todayOrders: billsResult?.count || 0,
+        todayRevenue: billsResult?.revenue || 0,
       });
     } catch (error) {
       console.error('Error loading stats:', error);

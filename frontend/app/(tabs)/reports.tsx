@@ -157,11 +157,11 @@ export default function ReportsScreen() {
 
     Alert.alert(
       'Delete Bill',
-      'This will remove the bill and revert the order. Are you sure?',
+      'This will permanently delete the bill and all its order data. This cannot be undone. Are you sure?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Delete Permanently',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -176,24 +176,53 @@ export default function ReportsScreen() {
                 return;
               }
 
+              // Get all order IDs associated with this bill (could be merged orders)
+              let orderIds: string[] = [];
+              if (bill.order_ids_json) {
+                try {
+                  orderIds = JSON.parse(bill.order_ids_json);
+                } catch {
+                  orderIds = [bill.order_id];
+                }
+              } else {
+                orderIds = [bill.order_id];
+              }
+
+              // Delete order items for all orders
+              for (const orderId of orderIds) {
+                await db.runAsync('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+              }
+
+              // Delete KOT prints for all orders
+              for (const orderId of orderIds) {
+                await db.runAsync('DELETE FROM kot_prints WHERE order_id = ?', [orderId]);
+              }
+
+              // Delete all orders
+              for (const orderId of orderIds) {
+                await db.runAsync('DELETE FROM orders WHERE id = ?', [orderId]);
+              }
+
               // Delete the bill
               await db.runAsync('DELETE FROM bills WHERE id = ?', [billId]);
 
-              // Revert the order status back to 'preparing'
-              // This ensures the order items are still available but not counted in reports
-              await db.runAsync(
-                'UPDATE orders SET status = ? WHERE id = ?',
-                ['preparing', bill.order_id]
+              // Check if table still has any orders, if not make it available
+              const tableOrders = await db.getFirstAsync<{ count: number }>(
+                `SELECT COUNT(*) as count FROM orders 
+                 WHERE table_id = (SELECT id FROM tables WHERE table_number = ?) 
+                 AND status IN ('pending', 'preparing')`,
+                [bill.table_number]
               );
 
-              // Update table status - make it available again if needed
-              await db.runAsync(
-                'UPDATE tables SET status = ?, current_order_id = ? WHERE table_number = ?',
-                ['occupied', bill.order_id, bill.table_number]
-              );
+              if (tableOrders?.count === 0) {
+                await db.runAsync(
+                  'UPDATE tables SET status = ? WHERE table_number = ?',
+                  ['available', bill.table_number]
+                );
+              }
 
               await loadReports();
-              Alert.alert('Success', 'Bill deleted and order reverted to preparing state');
+              Alert.alert('Success', 'Bill and all associated records deleted permanently');
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to delete bill');
             }
