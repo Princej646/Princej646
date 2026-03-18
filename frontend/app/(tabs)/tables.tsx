@@ -144,6 +144,46 @@ export default function TablesScreen() {
     }
   };
 
+  const handleDeleteTable = (table: Table) => {
+    Alert.alert(
+      'Delete Table',
+      `Are you sure you want to delete Table ${table.table_number}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            if (!useDBStore) return;
+            const db = useDBStore.getState().getDatabase();
+            if (!db) return;
+
+            try {
+              // Check if table has any orders (even completed ones)
+              const hasOrders = await db.getFirstAsync<{ count: number }>(
+                'SELECT COUNT(*) as count FROM orders WHERE table_id = ?',
+                [table.id]
+              );
+
+              if (hasOrders && hasOrders.count > 0) {
+                Alert.alert('Cannot Delete', 'This table has order history. Please clear all orders first.');
+                return;
+              }
+
+              // Delete the table
+              await db.runAsync('DELETE FROM tables WHERE id = ?', [table.id]);
+              
+              await loadTables();
+              Alert.alert('Success', `Table ${table.table_number} deleted successfully`);
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete table');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleTransferOrder = async () => {
     if (Platform.OS === 'web' || !useDBStore || !transferFromTable || !transferToTableId) {
       Alert.alert('Error', 'Please select a table to transfer to');
@@ -344,12 +384,21 @@ export default function TablesScreen() {
       });
     }
 
-    // Only admin can edit table details
+    // Only admin can edit/delete table details
     if (user?.role === 'admin') {
       options.push({
-        text: 'Edit Table',
+        text: '✏️ Edit Table',
         onPress: () => openEditTable(table),
       });
+      
+      // Only allow delete if table has no active orders or pending bills
+      if (!hasActiveOrder && !hasPendingBills) {
+        options.push({
+          text: '🗑️ Delete Table',
+          style: 'destructive',
+          onPress: () => handleDeleteTable(table),
+        });
+      }
     }
 
     // Build status text
