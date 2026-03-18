@@ -29,8 +29,16 @@
         "BLUETOOTH",
         "BLUETOOTH_ADMIN",
         "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "BLUETOOTH",
+        "BLUETOOTH_ADMIN",
+        "BLUETOOTH_CONNECT",
         "BLUETOOTH_SCAN"
-      ]
+      ],
+      "package": "com.anonymous.frontend"
     },
     "web": {
       "bundler": "metro",

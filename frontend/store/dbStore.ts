@@ -87,6 +87,7 @@ export const useDBStore = create<DBState>((set) => ({
           unit_price REAL NOT NULL,
           addons_json TEXT,
           notes TEXT,
+          kot_status TEXT DEFAULT 'pending',
           FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
         );
 
@@ -160,6 +161,17 @@ async function runMigrations(database: SQLite.SQLiteDatabase) {
     if (!hasOrderIdsJson) {
       await database.runAsync('ALTER TABLE bills ADD COLUMN order_ids_json TEXT');
       console.log('Migration: Added order_ids_json column to bills table');
+    }
+
+    // Check if kot_status column exists in order_items table
+    const orderItemColumns = await database.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(order_items)"
+    );
+    const hasKotStatus = orderItemColumns.some(col => col.name === 'kot_status');
+    
+    if (!hasKotStatus) {
+      await database.runAsync("ALTER TABLE order_items ADD COLUMN kot_status TEXT DEFAULT 'pending'");
+      console.log('Migration: Added kot_status column to order_items table');
     }
   } catch (error) {
     console.error('Migration error:', error);

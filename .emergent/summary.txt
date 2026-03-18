@@ -1,0 +1,216 @@
+<analysis>
+
+**original_problem_statement:**
+Create a mobile restaurant POS (Point of Sale) application designed to operate fully offline with a strong focus on privacy, security, and local data control.
+
+PRODUCT REQUIREMENTS:
+- **Offline First:** Must function completely offline.
+- **Local Data:** All data (menu, tables, orders, bills, reports) stored locally on the device using SQLite.
+- **Encryption:** Sensitive data and backups must be AES-256 encrypted.
+- **Access Control (RBAC):** Role-based access for reports (Admin, Manager, Cashier, Captain).
+- **Authentication:** PIN-based and Username/Password.
+- **Features:**
+    - Offline order taking with item-level hold for KOT printing.
+    - Table management (open, merge, transfer, edit, delete).
+    - Bill generation with inclusive CGST/SGST breakdown (5%) and restaurant branding.
+    - Automatic Bluetooth KOT printing.
+    - Secure local backup and restore.
+    - Editable menu with categories and add-ons.
+    - Part-payment option.
+    - Order cancellation.
+    - Concurrent orders on the same table.
+
+**User's preferred language**: English
+
+**what currently exists?**
+A comprehensive, offline-first mobile POS system built with Expo. The application uses a local SQLite database for all operational data, ensuring full offline functionality.
+
+Key implemented features include:
+- Role-based authentication (Admin, Manager, Captain).
+- A tab-based navigation system with role-based access control.
+- Advanced table management: add, edit, delete (Admin only), and transfer orders.
+- A sophisticated ordering system that supports multiple, independent orders on a single table simultaneously.
+- A two-step billing process (Print Bill, Settle Bill) with support for part-payments and merged bills.
+- An admin-exclusive reports dashboard with analytics that correctly update upon bill deletion.
+- A Cancel Order feature available directly from the table screen.
+- A custom theme (colors and branding) applied throughout the app, including the restaurant's name on bills.
+- The foundation for Bluetooth KOT printing and secure backup/restore has been laid, with dedicated screens and graceful error handling for running in Expo Go.
+
+**Last working item**:
+    - Last item agent was working: Implementing a Hold KOT feature. The goal is to allow users to hold specific items within an order (e.g., hold the main course) and print their Kitchen Order Ticket (KOT) later, allowing for better order sequencing. The agent has already updated the database schema and business logic, and was in the middle of updating the UI on the order screen to display the hold status and add buttons to manage it for each item.
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? manual testing by curl
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  Issue 1:  Data does not refresh on screens when switching user accounts (P1)
+  Issue 2:  Web preview crashes due to  incompatibility (P2)
+  
+  Issues Detail:
+  - Issue 1: 
+     - Attempted fixes: The agent tried using  which caused a crash due to incorrect usage with expo-router. The fix was reverted, but no effective replacement was implemented. As a result, when one user logs out and another logs in, screens like the dashboard, tables, and reports do not re-fetch data and show stale information from the previous session.
+     - Next debug checklist: 
+        1. In all primary screens (, , , ), import  from .
+        2. Create a  hook that triggers when  is true.
+        3. Move the data-loading functions (e.g., , ) inside this  hook. This is the standard pattern to ensure data is refreshed every time a screen comes into focus.
+     - Why fix this issue and what will be achieved with the fix? This is a critical usability bug. Fixing it will ensure that every user sees fresh, correct data corresponding to the current state of the restaurant when they log in, preventing confusion and operational errors.
+     - Status:  NOT STARTED
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: none
+  - Issue 2: 
+     - Attempted fixes: None in this session. Known issue from the start.
+     - Next debug checklist: Create a mock version of the  for web () that exports the same store structure but with empty methods, preventing the native module from being loaded on the web.
+     - Why fix this issue and what will be achieved with the fix? This is a low-priority issue. Fixing it would provide a graceful fallback for web previews, showing a mobile-only message instead of crashing.
+     - Status:  NOT STARTED
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: None
+
+**In progress Task List**:
+  - Task 1:  Complete the Hold KOT feature (P0)
+ 
+ Task Detail:
+  - Task 1: 
+     - Where to resume: The agent was working on . It needs to complete the UI implementation for the feature.
+        1. In the  function that displays each item in an order, add UI elements to show the  (e.g., a Held badge).
+        2. Add buttons (e.g., ) next to each item to call the  function.
+        3. Add a header button or a button at the bottom of the screen to call the  function to print the KOT for all held items.
+     - What will be achieved with this? This will complete a core user-requested feature, giving staff fine-grained control over when different parts of an order are sent to the kitchen.
+     - Status:  IN PROGRESS
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on something: None
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - **P0: Finalize Bluetooth KOT Printing:** The initial setup is complete, including graceful error handling in Expo Go. The next steps are to test on a development build, finalize the UI in  for scanning and connecting to devices, and ensure the  function in  correctly formats and sends the ESC/POS commands for the specified 80mm format.
+    - **P1: Finalize Secure Backup and Restore:** The UI screen  exists. The core logic needs to be implemented using  to read the database file,  to encrypt it with a user-provided password (AES-256), and  to allow the user to save/load the backup file.
+
+**Completed work in this session**
+- List of all completed tasks with file and method name:
+    - **Keyboard Bug Fix:** Fixed an issue where the keyboard obstructed UI elements on the order screen ().
+    - **Concurrent Order System:** Reworked the entire database schema and UI to allow multiple, independent orders to be taken on a single table. This involved major changes to , , , and .
+    - **New Customer Flow:** Implemented a user-friendly popup on the tables screen to handle new customers at tables with pending bills ().
+    - **Hard Delete for Bills:** Ensured that deleting a bill from the reports screen now purges all associated records (orders, order items) and correctly updates all analytics (, ).
+    - **Brand Theming:** Applied a new visual theme (Golden Yellow & Green) across the application and added the restaurant name Swadish Veg to bill headers (, , , etc.).
+    - **Order Cancellation:** Added a feature to cancel an active order directly from the table management screen ().
+    - **Admin Table Management:** Added the ability for Admin users to edit and delete tables ().
+    - **Bluetooth/Backup Foundation:** Created the initial screens and utility files for KOT printing and backup/restore, with robust error handling for environments like Expo Go where native modules are unavailable.
+
+- Recently completed:
+  - Admin table deletion (DONE)
+  - Order cancellation feature from table screen (DONE)
+  - Theming and branding implementation (DONE)
+  - Data integrity fix for bill deletion (DONE)
+  - Graceful crash handling for Bluetooth module in Expo Go (DONE)
+  - Major refactor for concurrent orders per table (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+   - Issue 1: Data synchronization between user accounts is not working. When a user logs out and another logs in, screens show stale data. This was reported by the user and the agent's fix failed. This is captured in the **All Pending/In progress Issue list** as Issue 1.
+
+**Known issue recurrence from previous fork**
+  - None.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Mobile Framework:** React Native with Expo
+- **Routing:** Expo Router (file-based)
+- **Backend:** FastAPI (for user auth)
+- **Database (Local):** SQLite via 
+- **State Management:** Zustand
+- **Styling:** React Native , custom theme file
+- **Native Modules:**  (for Bluetooth), , ,  (for backup/restore).
+
+**key DB schema**
+- **MongoDB (in ):**
+  - : 
+- **SQLite (in ):**
+  - : uid=0(root) gid=0(root) groups=0(root), , 
+  - : uid=0(root) gid=0(root) groups=0(root), ,  (, , , ),  (INTEGER, 0 or 1), 
+  - : uid=0(root) gid=0(root) groups=0(root), , , , , ,  (TEXT, 'pending', 'held', 'sent')
+  - : uid=0(root) gid=0(root) groups=0(root), , , , ,  (, ),  (TEXT, JSON array of order IDs)
+
+**changes in tech stack**
+  - None.
+
+**All files of reference**
+- : In progress for the Hold KOT feature.
+- : Contains all database logic, including recent schema changes for concurrent orders and KOT status.
+- : Contains logic for table status display, order cancellation, and the New Customer flow.
+- : Contains the heavily refactored UI and logic for handling multiple orders and the Print/Settle flow.
+- : Contains logic for bill deletion and analytics.
+- : UI for the upcoming Bluetooth printing feature.
+- : UI for the upcoming backup/restore feature.
+- : Contains the class for handling Bluetooth communication.
+
+**Areas that need refactoring**:
+- The data fetching logic is scattered across  hooks in each component. A more robust solution would be to use a library like React Query or SWR, or at least centralize fetching logic within the Zustand store, to better manage caching, refetching, and background updates. This would also solve the data sync issue more elegantly.
+
+**key api endpoints**
+- : User login.
+- : Admin create user.
+- : Admin get all users.
+- : Admin delete user.
+
+**Critical Info for New Agent**
+- **Data Refresh Bug:** The most critical bug is that screens do not refresh data after re-login. The previous agent's fix failed. The top priority should be to implement a correct  hook pattern on all main screens.
+- **Expo Go vs. Dev Build:** Bluetooth functionality **will not work** in Expo Go. The app correctly handles this by disabling the feature and showing a message. Do not waste time trying to make it work in Expo Go. All BT development must be tested with a development build (env: load .env
+env: export EXPO_TUNNEL_SUBDOMAIN EXPO_PACKAGER_HOSTNAME EXPO_PUBLIC_BACKEND_URL EXPO_USE_FAST_RESOLVER METRO_CACHE_ROOT
+› Android package name: com.anonymous.frontend
+- Creating native directory (./android)
+✔ Created native directory
+- Updating package.json
+✔ Updated package.json
+- Running prebuild
+✖ Prebuild failed or env: load .env).
+- **Database is King:** All application state and logic is driven by the local SQLite database managed in . Understand the table schemas and queries in this file before modifying any features.
+
+**documents created in this job**
+  - 
+  - 
+  - 
+  - 
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ -  - User requested the KOT hold feature. (IN PROGRESS)
+ -  - User asked for build files. Agent provided instructions. (Completed)
+ -  - User reported a bug with order cancellation. (Completed)
+ -  - User requested table deletion for Admins. (Completed)
+ -  - User clarified the desired location for the cancel order feature. (Completed)
+ -  - User requested analytics to update after bill deletion. (Completed)
+ -  - User requested a feature to cancel orders. (Completed)
+ -  - User requested theming and branding changes. (Completed)
+ -  - User reported issues with data sync and bill deletion. (Completed)
+ -  - User reported the data sync issue between accounts. (Issue is PENDING)
+
+**Project Health Check:**
+- **Broken:**
+    - Data does not refresh between user sessions, showing stale information.
+    - Web preview is non-functional due to native dependencies (known, low priority).
+- **Mocked:**
+    - **Bluetooth KOT Printing:** The UI and logic are partially in place but are disabled in Expo Go. Requires a development build to be fully functional.
+    - **Secure Backup & Restore:** A UI screen exists, but the core encryption and file handling logic is not implemented.
+
+**3rd Party Integrations**
+- : For local database.
+- : For reports dashboard.
+- : For Bluetooth communication (for KOT printing).
+- , , : For secure backup/restore feature.
+
+**Testing status**
+  - Testing agent used after significant changes: NO
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: []
+  - Known regressions: [Data does not refresh on screens between user sessions]
+
+**Credentials to test flow:**
+- **Admin:** username , password , pin 
+- **Captain:** username , password , pin 
+
+**What agent forgot to execute**
+The agent failed to properly resolve the data sync issue. After its initial  implementation crashed the app, it reverted the changes but did not implement a working alternative. The standard and correct approach is to use a  hook that listens to the  boolean from the  hook (). This was completely missed, leaving a critical usability bug in the application.
+
+</analysis>

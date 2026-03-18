@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { usePathname } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { COLORS, RESTAURANT } from '../../constants/theme';
 
 let useDBStore: any = null;
@@ -56,6 +56,7 @@ export default function BillingScreen() {
   const [upiAmount, setUpiAmount] = useState('');
   const [tableOrdersMap, setTableOrdersMap] = useState<Map<string, TableOrders>>(new Map());
   const [unprintedOrders, setUnprintedOrders] = useState<any[]>([]); // Orders ready to print bill
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -63,16 +64,12 @@ export default function BillingScreen() {
     }
   }, []);
 
-  // Refresh data when pathname changes (screen comes into focus)
-  const pathname = usePathname();
-  
+  // Reload orders when screen comes into focus (fixes data sync issue between user sessions)
   useEffect(() => {
-    if (pathname === '/billing' || pathname === '/(tabs)/billing') {
-      if (Platform.OS !== 'web') {
-        loadReadyOrders();
-      }
+    if (isFocused && Platform.OS !== 'web') {
+      loadReadyOrders();
     }
-  }, [pathname]);
+  }, [isFocused]);
 
   const loadReadyOrders = async () => {
     if (!useDBStore) return;

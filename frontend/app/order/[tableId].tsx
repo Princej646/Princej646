@@ -51,6 +51,7 @@ interface OrderItem {
   unit_price: number;
   addons_json: string | null;
   notes: string | null;
+  kot_status: string; // 'pending' | 'hold' | 'sent'
 }
 
 export default function OrderScreen() {
@@ -238,8 +239,8 @@ export default function OrderScreen() {
 
       const orderItemId = `oi_${Date.now()}`;
       await db.runAsync(
-        'INSERT INTO order_items (id, order_id, item_id, item_name, quantity, unit_price, addons_json, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [orderItemId, currentOrderId, selectedItem.id, selectedItem.name, itemQuantity, totalUnitPrice, addonsJson, itemNotes]
+        'INSERT INTO order_items (id, order_id, item_id, item_name, quantity, unit_price, addons_json, notes, kot_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [orderItemId, currentOrderId, selectedItem.id, selectedItem.name, itemQuantity, totalUnitPrice, addonsJson, itemNotes, 'pending']
       );
 
       setShowItemModal(false);
@@ -285,9 +286,21 @@ export default function OrderScreen() {
     const db = useDBStore.getState().getDatabase();
     if (!db) return;
 
+    // Get only pending items (not on hold and not already sent)
+    const pendingItems = orderItems.filter(item => item.kot_status === 'pending' || !item.kot_status);
+    
+    if (pendingItems.length === 0) {
+      Alert.alert('Info', 'No items to send to kitchen. All items are either on hold or already sent.');
+      return;
+    }
+
+    const holdItems = orderItems.filter(item => item.kot_status === 'hold');
+
     Alert.alert(
       'Submit Order',
-      'Send this order to kitchen (KOT)?',
+      holdItems.length > 0 
+        ? `Send ${pendingItems.length} item(s) to kitchen? (${holdItems.length} item(s) on hold will be sent later)`
+        : `Send ${pendingItems.length} item(s) to kitchen (KOT)?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -299,16 +312,24 @@ export default function OrderScreen() {
                 ['preparing', order.id]
               );
 
+              // Update pending items to 'sent' status
+              for (const item of pendingItems) {
+                await db.runAsync(
+                  'UPDATE order_items SET kot_status = ? WHERE id = ?',
+                  ['sent', item.id]
+                );
+              }
+
               const kotId = `kot_${Date.now()}`;
               await db.runAsync(
                 'INSERT INTO kot_prints (id, order_id, table_number, items_json, printed_by_username) VALUES (?, ?, ?, ?, ?)',
-                [kotId, order.id, table?.table_number, JSON.stringify(orderItems), user?.username]
+                [kotId, order.id, table?.table_number, JSON.stringify(pendingItems), user?.username]
               );
 
               // Try to print KOT via Bluetooth printer
               if (bluetoothPrinter && bluetoothPrinter.isConnected()) {
                 try {
-                  const printItems = orderItems.map(item => {
+                  const printItems = pendingItems.map(item => {
                     const addons = item.addons_json ? JSON.parse(item.addons_json) : [];
                     return {
                       name: item.item_name,
@@ -326,18 +347,119 @@ export default function OrderScreen() {
                     printedBy: user?.username || 'Unknown',
                   });
 
-                  Alert.alert('Success', 'Order sent to kitchen! KOT printed.');
+                  Alert.alert('Success', 'KOT sent to kitchen!' + (holdItems.length > 0 ? ` (${holdItems.length} items on hold)` : ''));
                 } catch (printError) {
                   console.error('KOT print error:', printError);
                   Alert.alert('Success', 'Order sent to kitchen! (Printer not available)');
                 }
               } else {
-                Alert.alert('Success', 'Order sent to kitchen! (Connect printer in Settings)');
+                Alert.alert('Success', 'Order sent to kitchen!' + (holdItems.length > 0 ? ` (${holdItems.length} items on hold)` : ''));
               }
               
-              router.back();
+              await loadTableAndOrder();
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to submit order');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggleHold = async (orderItemId: string) => {
+    if (!useDBStore) return;
+    const db = useDBStore.getState().getDatabase();
+    if (!db) return;
+
+    try {
+      const item = orderItems.find(i => i.id === orderItemId);
+      if (!item) return;
+
+      // Can only toggle hold for pending items (not already sent)
+      if (item.kot_status === 'sent') {
+        Alert.alert('Cannot Hold', 'This item has already been sent to kitchen.');
+        return;
+      }
+
+      const newStatus = item.kot_status === 'hold' ? 'pending' : 'hold';
+      await db.runAsync(
+        'UPDATE order_items SET kot_status = ? WHERE id = ?',
+        [newStatus, orderItemId]
+      );
+
+      await loadTableAndOrder();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update item');
+    }
+  };
+
+  const handleSendHoldItems = async () => {
+    if (!useDBStore || !order) return;
+    const db = useDBStore.getState().getDatabase();
+    if (!db) return;
+
+    const holdItems = orderItems.filter(item => item.kot_status === 'hold');
+    if (holdItems.length === 0) {
+      Alert.alert('Info', 'No items on hold to send.');
+      return;
+    }
+
+    Alert.alert(
+      'Send Hold Items',
+      `Send ${holdItems.length} held item(s) to kitchen?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send Now',
+          onPress: async () => {
+            try {
+              // Update hold items to 'sent' status
+              for (const item of holdItems) {
+                await db.runAsync(
+                  'UPDATE order_items SET kot_status = ? WHERE id = ?',
+                  ['sent', item.id]
+                );
+              }
+
+              const kotId = `kot_${Date.now()}`;
+              await db.runAsync(
+                'INSERT INTO kot_prints (id, order_id, table_number, items_json, printed_by_username) VALUES (?, ?, ?, ?, ?)',
+                [kotId, order.id, table?.table_number, JSON.stringify(holdItems), user?.username]
+              );
+
+              // Try to print KOT via Bluetooth printer
+              if (bluetoothPrinter && bluetoothPrinter.isConnected()) {
+                try {
+                  const printItems = holdItems.map(item => {
+                    const addons = item.addons_json ? JSON.parse(item.addons_json) : [];
+                    return {
+                      name: item.item_name,
+                      quantity: item.quantity,
+                      notes: item.notes || undefined,
+                      addons: addons.length > 0 ? addons.map((a: any) => a.name) : undefined,
+                    };
+                  });
+
+                  await bluetoothPrinter.printKOT({
+                    tableNumber: table?.table_number || 'Unknown',
+                    orderId: order.id,
+                    items: printItems,
+                    timestamp: new Date().toLocaleString(),
+                    printedBy: user?.username || 'Unknown',
+                  });
+
+                  Alert.alert('Success', 'Hold items sent to kitchen! KOT printed.');
+                } catch (printError) {
+                  console.error('KOT print error:', printError);
+                  Alert.alert('Success', 'Hold items sent to kitchen! (Printer not available)');
+                }
+              } else {
+                Alert.alert('Success', 'Hold items sent to kitchen!');
+              }
+
+              await loadTableAndOrder();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to send hold items');
             }
           },
         },
@@ -494,8 +616,20 @@ export default function OrderScreen() {
           <ScrollView style={styles.orderItemsList}>
             {orderItems.map((item) => {
               const addons = item.addons_json ? JSON.parse(item.addons_json) : [];
+              const isHold = item.kot_status === 'hold';
+              const isSent = item.kot_status === 'sent';
               return (
-                <View key={item.id} style={styles.orderItem}>
+                <View key={item.id} style={[
+                  styles.orderItem,
+                  isHold && styles.orderItemHold,
+                  isSent && styles.orderItemSent,
+                ]}>
+                  {/* Status Badge */}
+                  {(isHold || isSent) && (
+                    <View style={[styles.kotStatusBadge, isHold ? styles.kotStatusHold : styles.kotStatusSent]}>
+                      <Text style={styles.kotStatusText}>{isHold ? '⏸ HOLD' : '✓ SENT'}</Text>
+                    </View>
+                  )}
                   <View style={styles.orderItemHeader}>
                     <Text style={styles.orderItemQuantity}>{item.quantity}x</Text>
                     <View style={styles.orderItemInfo}>
@@ -509,9 +643,23 @@ export default function OrderScreen() {
                         <Text style={styles.orderItemNotes}>Note: {item.notes}</Text>
                       )}
                     </View>
-                    <TouchableOpacity onPress={() => handleRemoveOrderItem(item.id)}>
-                      <Ionicons name="close-circle" size={24} color="#FF3B30" />
-                    </TouchableOpacity>
+                    <View style={styles.orderItemActions}>
+                      {!isSent && (
+                        <TouchableOpacity 
+                          style={[styles.holdButton, isHold && styles.holdButtonActive]}
+                          onPress={() => handleToggleHold(item.id)}
+                        >
+                          <Ionicons 
+                            name={isHold ? "play" : "pause"} 
+                            size={18} 
+                            color={isHold ? "#228B22" : "#FF9800"} 
+                          />
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity onPress={() => handleRemoveOrderItem(item.id)}>
+                        <Ionicons name="close-circle" size={24} color="#FF3B30" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   <Text style={styles.orderItemPrice}>
                     ₹{(item.unit_price * item.quantity).toFixed(2)}
@@ -523,6 +671,15 @@ export default function OrderScreen() {
 
           {orderItems.length > 0 && (
             <View style={styles.orderFooter}>
+              {/* Hold items button */}
+              {orderItems.some(i => i.kot_status === 'hold') && (
+                <TouchableOpacity style={styles.sendHoldButton} onPress={handleSendHoldItems}>
+                  <Ionicons name="play-circle" size={20} color="#FFF" />
+                  <Text style={styles.sendHoldButtonText}>
+                    Send Hold Items ({orderItems.filter(i => i.kot_status === 'hold').length})
+                  </Text>
+                </TouchableOpacity>
+              )}
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>Subtotal</Text>
                 <Text style={styles.totalValue}>₹{calculateTotal().toFixed(2)}</Text>
@@ -967,5 +1124,70 @@ const styles = StyleSheet.create({
     marginTop: 100,
     fontSize: 18,
     color: '#666',
+  },
+  // Hold KOT Feature Styles
+  orderItemHold: {
+    backgroundColor: '#FFF8E1',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  orderItemSent: {
+    backgroundColor: '#E8F5E9',
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  kotStatusBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  kotStatusHold: {
+    backgroundColor: '#FF9800',
+  },
+  kotStatusSent: {
+    backgroundColor: '#4CAF50',
+  },
+  kotStatusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  orderItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  holdButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF3E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FF9800',
+  },
+  holdButtonActive: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#4CAF50',
+  },
+  sendHoldButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#228B22',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+    marginBottom: 12,
+  },
+  sendHoldButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
   },
 });

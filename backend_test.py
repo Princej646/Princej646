@@ -10,7 +10,7 @@ import sys
 from typing import Dict, Any
 
 # Get backend URL from frontend .env
-BACKEND_URL = "https://secure-billing-7.preview.emergentagent.com/api"
+BACKEND_URL = "https://privacy-first-pos.preview.emergentagent.com/api"
 
 class RestaurantPOSAPITester:
     def __init__(self):

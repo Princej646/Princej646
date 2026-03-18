@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
-import { usePathname } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { COLORS, RESTAURANT } from '../../constants/theme';
 
 let useDBStore: any = null;
@@ -31,6 +31,7 @@ const initDBStore = async () => {
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
+  const isFocused = useIsFocused();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalTables: 0,
@@ -59,17 +60,12 @@ export default function HomeScreen() {
     }
   }, [user]);
 
-  // Use pathname to detect when screen is focused
-  const pathname = usePathname();
-  
+  // Reload stats when screen comes into focus (fixes data sync issue between user sessions)
   useEffect(() => {
-    // Reload stats when we navigate to this tab
-    if (pathname === '/' || pathname === '/index' || pathname === '/(tabs)' || pathname === '/(tabs)/index') {
-      if (Platform.OS !== 'web' && useDBStore) {
-        loadStats();
-      }
+    if (isFocused && Platform.OS !== 'web' && useDBStore) {
+      loadStats();
     }
-  }, [pathname]);
+  }, [isFocused]);
 
   const loadStats = async () => {
     if (Platform.OS === 'web' || !useDBStore) return;
