@@ -591,6 +591,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
+    marginBottom: 12,
+  },
+  settleButton: {
+    backgroundColor: '#4CAF50',
   },
   generateButtonText: {
     fontSize: 18,
