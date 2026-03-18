@@ -25,6 +25,24 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Health check endpoint
+@api_router.get("/health")
+async def health_check():
+    try:
+        # Check MongoDB connection
+        await db.command("ping")
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "service": "Swadish Veg POS API"
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e)
+        }
+
 
 # Define Models
 class LoginRequest(BaseModel):
