@@ -72,7 +72,7 @@ export default function TabsLayout() {
         />
       )}
 
-      {(role === 'manager' || role === 'admin') && (
+      {role === 'admin' && (
         <Tabs.Screen
           name="reports"
           options={{
@@ -81,7 +81,8 @@ export default function TabsLayout() {
               <Ionicons name="stats-chart" size={size} color={color} />
             ),
           }}
-        />\n      )}
+        />
+      )}
 
       <Tabs.Screen
         name="settings"
