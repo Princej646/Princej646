@@ -10,10 +10,11 @@ import {
   RefreshControl,
   Modal,
   TextInput,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useSegments } from 'expo-router';
 import { COLORS, RESTAURANT } from '../../constants/theme';
 
 let useDBStore: any = null;
@@ -56,6 +57,7 @@ export default function BillingScreen() {
   const [upiAmount, setUpiAmount] = useState('');
   const [tableOrdersMap, setTableOrdersMap] = useState<Map<string, TableOrders>>(new Map());
   const [unprintedOrders, setUnprintedOrders] = useState<any[]>([]); // Orders ready to print bill
+  const segments = useSegments();
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -63,14 +65,23 @@ export default function BillingScreen() {
     }
   }, []);
 
-  // Reload orders when screen comes into focus (fixes data sync issue between user sessions)
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== 'web') {
+  // Reload orders when screen comes into focus using segments (expo-router compatible)
+  useEffect(() => {
+    const isBillingScreen = segments.length >= 1 && segments[0] === '(tabs)' && segments[1] === 'billing';
+    if (isBillingScreen && Platform.OS !== 'web') {
+      loadReadyOrders();
+    }
+  }, [segments]);
+
+  // Also reload on app state change
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && Platform.OS !== 'web') {
         loadReadyOrders();
       }
-    }, [])
-  );
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const loadReadyOrders = async () => {
     if (!useDBStore) return;

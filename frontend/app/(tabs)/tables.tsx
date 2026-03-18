@@ -10,11 +10,11 @@ import {
   Modal,
   RefreshControl,
   Platform,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useSegments } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 
 let useDBStore: any = null;
@@ -35,6 +35,7 @@ interface Table {
 export default function TablesScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const segments = useSegments();
   const [tables, setTables] = useState<Table[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
@@ -52,14 +53,23 @@ export default function TablesScreen() {
     }
   }, []);
 
-  // Reload tables when screen comes into focus (fixes data sync issue between user sessions)
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== 'web') {
+  // Reload tables when screen comes into focus using segments (expo-router compatible)
+  useEffect(() => {
+    const isTablesScreen = segments.length >= 1 && segments[0] === '(tabs)' && segments[1] === 'tables';
+    if (isTablesScreen && Platform.OS !== 'web') {
+      loadTables();
+    }
+  }, [segments]);
+
+  // Also reload on app state change
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && Platform.OS !== 'web') {
         loadTables();
       }
-    }, [])
-  );
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const loadTables = async () => {
     if (Platform.OS === 'web' || !useDBStore) return;

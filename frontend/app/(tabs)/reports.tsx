@@ -8,12 +8,12 @@ import {
   Platform,
   RefreshControl,
   Alert,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-gifted-charts';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useSegments } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 
 let useDBStore: any = null;
@@ -37,6 +37,7 @@ interface ItemSale {
 export default function ReportsScreen() {
   const router = useRouter();
   const currentUser = useAuthStore((state) => state.user);
+  const segments = useSegments();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [selectedView, setSelectedView] = useState<'analytics' | 'bills'>('analytics');
@@ -62,14 +63,23 @@ export default function ReportsScreen() {
     }
   }, [selectedPeriod, currentUser]);
 
-  // Reload reports when screen comes into focus (fixes data sync issue between user sessions)
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== 'web' && currentUser?.role === 'admin') {
+  // Reload reports when screen comes into focus using segments (expo-router compatible)
+  useEffect(() => {
+    const isReportsScreen = segments.length >= 1 && segments[0] === '(tabs)' && segments[1] === 'reports';
+    if (isReportsScreen && Platform.OS !== 'web' && currentUser?.role === 'admin') {
+      loadReports();
+    }
+  }, [segments, selectedPeriod]);
+
+  // Also reload on app state change
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && Platform.OS !== 'web' && currentUser?.role === 'admin') {
         loadReports();
       }
-    }, [selectedPeriod])
-  );
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const loadReports = async () => {
     if (!useDBStore) return;

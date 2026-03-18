@@ -7,12 +7,12 @@ import {
   TouchableOpacity,
   RefreshControl,
   Platform,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../store/authStore';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { COLORS, RESTAURANT } from '../../constants/theme';
 
 let useDBStore: any = null;
@@ -31,6 +31,7 @@ const initDBStore = async () => {
 export default function HomeScreen() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
+  const segments = useSegments();
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     totalTables: 0,
@@ -59,14 +60,27 @@ export default function HomeScreen() {
     }
   }, [user]);
 
-  // Reload stats when screen comes into focus (fixes data sync issue between user sessions)
-  useFocusEffect(
-    useCallback(() => {
-      if (Platform.OS !== 'web' && useDBStore) {
+  // Reload stats when screen comes into focus using segments (expo-router compatible)
+  useEffect(() => {
+    // Check if we're on the home tab
+    const isHomeScreen = segments.length === 0 || 
+                         (segments.length >= 1 && segments[0] === '(tabs)' && 
+                          (segments.length === 1 || segments[1] === 'index' || segments[1] === undefined));
+    
+    if (isHomeScreen && Platform.OS !== 'web' && useDBStore) {
+      loadStats();
+    }
+  }, [segments]);
+
+  // Also reload on app state change (coming back from background)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && Platform.OS !== 'web' && useDBStore) {
         loadStats();
       }
-    }, [])
-  );
+    });
+    return () => subscription?.remove();
+  }, []);
 
   const loadStats = async () => {
     if (Platform.OS === 'web' || !useDBStore) return;
