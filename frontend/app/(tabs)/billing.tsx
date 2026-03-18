@@ -422,6 +422,75 @@ export default function BillingScreen() {
           </View>
         </ScrollView>
       )}
+
+      {/* Part Payment Modal */}
+      <Modal visible={showPartPaymentModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Part Payment</Text>
+            <Text style={styles.modalSubtitle}>
+              Total Bill: ₹{calculateSubtotal().toFixed(2)}
+            </Text>
+
+            <View style={styles.partPaymentInputs}>
+              <View style={styles.paymentInputGroup}>
+                <Text style={styles.paymentLabel}>💵 Cash Amount</Text>
+                <TextInput
+                  style={styles.paymentInput}
+                  placeholder="0.00"
+                  value={cashAmount}
+                  onChangeText={setCashAmount}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.paymentInputGroup}>
+                <Text style={styles.paymentLabel}>💳 Card Amount</Text>
+                <TextInput
+                  style={styles.paymentInput}
+                  placeholder="0.00"
+                  value={cardAmount}
+                  onChangeText={setCardAmount}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.paymentInputGroup}>
+                <Text style={styles.paymentLabel}>📱 UPI Amount</Text>
+                <TextInput
+                  style={styles.paymentInput}
+                  placeholder="0.00"
+                  value={upiAmount}
+                  onChangeText={setUpiAmount}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+
+              <View style={styles.totalPaidRow}>
+                <Text style={styles.totalPaidLabel}>Total Paid:</Text>
+                <Text style={styles.totalPaidValue}>
+                  ₹{((parseFloat(cashAmount) || 0) + (parseFloat(cardAmount) || 0) + (parseFloat(upiAmount) || 0)).toFixed(2)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowPartPaymentModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handlePartPayment}
+              >
+                <Text style={styles.confirmButtonText}>Confirm Payment</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
