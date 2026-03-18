@@ -37,6 +37,7 @@ export default function BillingScreen() {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [billPrinted, setBillPrinted] = useState(false);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
