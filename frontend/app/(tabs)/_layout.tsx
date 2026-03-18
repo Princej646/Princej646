@@ -36,53 +36,49 @@ export default function TabsLayout() {
         }}
       />
       
-      {(role === 'admin' || role === 'manager') && (
-        <Tabs.Screen
-          name="menu"
-          options={{
-            title: 'Menu',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="restaurant" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          href: (role === 'admin' || role === 'manager') ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="restaurant" size={size} color={color} />
+          ),
+        }}
+      />
 
-      {(role === 'captain' || role === 'admin') && (
-        <Tabs.Screen
-          name="tables"
-          options={{
-            title: 'Tables',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="grid" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="tables"
+        options={{
+          title: 'Tables',
+          href: (role === 'captain' || role === 'admin') ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="grid" size={size} color={color} />
+          ),
+        }}
+      />
 
-      {(role === 'cashier' || role === 'admin' || role === 'captain') && (
-        <Tabs.Screen
-          name="billing"
-          options={{
-            title: 'Billing',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="cash" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="billing"
+        options={{
+          title: 'Billing',
+          href: (role === 'cashier' || role === 'admin' || role === 'captain') ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="cash" size={size} color={color} />
+          ),
+        }}
+      />
 
-      {role === 'admin' && (
-        <Tabs.Screen
-          name="reports"
-          options={{
-            title: 'Reports',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="stats-chart" size={size} color={color} />
-            ),
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="reports"
+        options={{
+          title: 'Reports',
+          href: role === 'admin' ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="stats-chart" size={size} color={color} />
+          ),
+        }}
+      />
 
       <Tabs.Screen
         name="settings"
