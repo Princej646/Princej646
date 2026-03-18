@@ -112,6 +112,60 @@ async def login(request: LoginRequest):
     
     return LoginResponse(user=user_response, message="Login successful")
 
+# User Management Routes (Admin only)
+@api_router.get("/users")
+async def get_users():
+    users = await db.users.find({}, {"password_hash": 0, "pin_hash": 0}).to_list(1000)
+    return {"users": users}
+
+@api_router.post("/users")
+async def create_user(request: dict):
+    # Check if username already exists
+    existing = await db.users.find_one({"username": request.get("username")})
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    user_id = str(uuid.uuid4())
+    user_data = {
+        "id": user_id,
+        "username": request.get("username"),
+        "name": request.get("name"),
+        "role": request.get("role"),
+        "password_hash": bcrypt.hash(request.get("password")),
+        "pin_hash": bcrypt.hash(request.get("pin")),
+        "created_at": datetime.utcnow().isoformat()
+    }
+    
+    await db.users.insert_one(user_data)
+    return {"message": "User created successfully", "id": user_id}
+
+@api_router.put("/users/{user_id}")
+async def update_user(user_id: str, request: dict):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_data = {
+        "name": request.get("name"),
+        "role": request.get("role"),
+    }
+    
+    # Only update password/pin if provided
+    if request.get("password"):
+        update_data["password_hash"] = bcrypt.hash(request.get("password"))
+    if request.get("pin"):
+        update_data["pin_hash"] = bcrypt.hash(request.get("pin"))
+    
+    await db.users.update_one({"id": user_id}, {"$set": update_data})
+    return {"message": "User updated successfully"}
+
+@api_router.delete("/users/{user_id}")
+async def delete_user(user_id: str):
+    result = await db.users.delete_one({"id": user_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"message": "User deleted successfully"}
+
 @api_router.get("/")
 async def root():
     return {"message": "Restaurant POS API", "status": "online"}
