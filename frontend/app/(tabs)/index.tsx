@@ -129,7 +129,7 @@ export default function HomeScreen() {
       label: 'View Reports',
       color: '#F38181',
       route: '/reports',
-      roles: ['manager', 'admin'],
+      roles: ['admin'],
     },
   ];
 
