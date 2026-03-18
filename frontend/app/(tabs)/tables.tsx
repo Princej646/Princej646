@@ -614,4 +614,41 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
+  modalSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 20,
+  },
+  transferTableList: {
+    maxHeight: 300,
+    marginBottom: 20,
+  },
+  transferTableOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  transferTableOptionSelected: {
+    borderColor: '#4ECDC4',
+    backgroundColor: '#F0FFFE',
+  },
+  transferTableInfo: {
+    flex: 1,
+  },
+  transferTableNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+  },
+  transferTableSeats: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
 });
