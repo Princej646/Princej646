@@ -50,8 +50,11 @@ class BluetoothPrinterService {
       if (bleModule && bleModule.BleManager) {
         this.BleManager = bleModule.BleManager;
         this.State = bleModule.State;
-      this.bleAvailable = true;
-      return true;
+        this.bleAvailable = true;
+        return true;
+      }
+      this.bleAvailable = false;
+      return false;
     } catch (error) {
       console.log('BLE module not available (requires development build, not supported in Expo Go)');
       this.bleAvailable = false;
